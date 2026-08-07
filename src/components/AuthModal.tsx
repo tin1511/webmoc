@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Lock, Mail, ShieldCheck, LogIn, UserPlus, Sparkles, AlertCircle, Eye, EyeOff, CheckSquare, Square, Info } from 'lucide-react';
+import { X, User, Lock, Mail, ShieldCheck, LogIn, UserPlus, Sparkles, AlertCircle, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 import { UserAccount, DEFAULT_ADMIN } from '../types/auth';
 import {
   subscribeToUsers,
@@ -429,40 +429,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <span>Đăng Nhập Ngay</span>
               </button>
 
-              {/* Helpful tip & quick fill buttons for users */}
-              <div className="p-3.5 bg-[#F0EDE9] rounded-2xl text-[11px] text-[#6B665E] space-y-2 border border-[#EAE7E2]">
-                <div className="flex items-center gap-1.5 font-bold text-[#2D2926]">
-                  <Info className="w-3.5 h-3.5 text-[#8B4513]" />
-                  <span>Chọn Tài Khoản Thử Nghiệm Nhanh:</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername('admin');
-                      setPassword('hminh0812');
-                      setError('');
-                    }}
-                    className="p-2 bg-white border border-[#DEDAD2] hover:border-[#8B4513] rounded-xl text-left transition-all cursor-pointer shadow-2xs"
-                  >
-                    <div className="font-bold text-[#8B4513] text-[11px]">👑 Admin Cửa Hàng</div>
-                    <div className="text-[10px] text-[#8C877E]">admin / hminh0812</div>
-                  </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername('khachhang');
-                      setPassword('123456');
-                      setError('');
-                    }}
-                    className="p-2 bg-white border border-[#DEDAD2] hover:border-[#5A5A40] rounded-xl text-left transition-all cursor-pointer shadow-2xs"
-                  >
-                    <div className="font-bold text-[#5A5A40] text-[11px]">👤 Khách Hàng Demo</div>
-                    <div className="text-[10px] text-[#8C877E]">khachhang / 123456</div>
-                  </button>
-                </div>
-              </div>
             </form>
           ) : (
             /* Register Form */
