@@ -1,15 +1,103 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Film, Sparkles, X, CheckCircle2, Plus, Trash2, Upload, Video as VideoIcon, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Play, Film, Sparkles, X, CheckCircle2, Plus, Trash2, Upload, Video as VideoIcon, Image as ImageIcon, AlertCircle, ExternalLink } from 'lucide-react';
 
 export interface VideoItem {
   id: string;
   title: string;
   description: string;
-  videoUrl: string; // MP4 URL or Data URL
+  videoUrl: string; // MP4 URL, YouTube URL or Data URL
   thumbnailUrl: string;
   duration: string;
   tag: string;
 }
+
+export function parseVideoSource(url: string) {
+  if (!url) return { type: 'mp4', embedUrl: '', id: '' };
+
+  const trimmed = url.trim();
+
+  // YouTube watch link or shorts or share
+  const ytMatch = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch && ytMatch[1]) {
+    return {
+      type: 'youtube',
+      embedUrl: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&rel=0&modestbranding=1`,
+      id: ytMatch[1]
+    };
+  }
+
+  // Vimeo
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(?:video\/)?([0-9]+)/);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return {
+      type: 'vimeo',
+      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`,
+      id: vimeoMatch[1]
+    };
+  }
+
+  return { type: 'mp4', embedUrl: trimmed, id: '' };
+}
+
+export const SmartVideoPlayer: React.FC<{ video: VideoItem }> = ({ video }) => {
+  const [videoError, setVideoError] = useState(false);
+  const videoSource = parseVideoSource(video.videoUrl);
+
+  if (videoSource.type === 'youtube' || videoSource.type === 'vimeo') {
+    return (
+      <iframe
+        src={videoSource.embedUrl}
+        title={video.title}
+        className="w-full h-full border-0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+    );
+  }
+
+  if (videoError) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-[#1A1816] text-center">
+        <AlertCircle className="w-12 h-12 text-[#8B4513] mb-3 animate-bounce" />
+        <h4 className="text-white font-bold text-base mb-1">Không thể tải trực tiếp file video này</h4>
+        <p className="text-xs text-[#A8A29E] max-w-md mb-5 leading-relaxed">
+          Đường dẫn video MP4 này có thể bị giới hạn truy cập hoặc chặn CORS từ trình duyệt. Bạn có thể bấm nút bên dưới để mở video ở tab mới hoặc thay bằng link YouTube.
+        </p>
+        <div className="flex flex-wrap gap-3 justify-center">
+          <a
+            href={video.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-[#8B4513] hover:bg-[#6E360F] text-white px-5 py-2.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span>Mở Xem Trực Tiếp Tab Mới</span>
+          </a>
+          <button
+            onClick={() => setVideoError(false)}
+            className="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-full text-xs font-semibold cursor-pointer transition-all"
+          >
+            Thử Lại Trình Phát
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      src={video.videoUrl}
+      controls
+      autoPlay
+      playsInline
+      poster={video.thumbnailUrl}
+      className="w-full h-full object-contain"
+      onError={() => setVideoError(true)}
+    >
+      Trình duyệt của bạn không hỗ trợ phát video HTML5.
+    </video>
+  );
+};
 
 export const INITIAL_CRAFT_VIDEOS: VideoItem[] = [
   {
@@ -377,17 +465,9 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({
               <X className="w-5 h-5" />
             </button>
 
-            {/* HTML5 Video Player */}
+            {/* Smart Video Player (Supports YouTube, Vimeo, direct MP4 & Data URLs with fallback) */}
             <div className="relative aspect-video bg-black flex items-center justify-center">
-              <video
-                src={activeVideo.videoUrl}
-                controls
-                autoPlay
-                className="w-full h-full object-contain"
-                poster={activeVideo.thumbnailUrl}
-              >
-                Trình duyệt của bạn không hỗ trợ phát video HTML5.
-              </video>
+              <SmartVideoPlayer video={activeVideo} />
             </div>
 
             {/* Video Footer Caption */}
@@ -525,14 +605,14 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({
                   />
                 </label>
 
-                <div className="mt-2 text-[11px] text-[#6B665E] flex items-center justify-between">
-                  <span>Hoặc dán URL Video online:</span>
+                <div className="mt-2 text-[11px] text-[#6B665E] flex items-center justify-between font-semibold">
+                  <span>Hoặc dán Link YouTube, Vimeo, MP4:</span>
                 </div>
                 <input
                   type="text"
                   value={videoUrlInput}
                   onChange={(e) => setVideoUrlInput(e.target.value)}
-                  placeholder="https://.../video.mp4"
+                  placeholder="https://www.youtube.com/watch?v=... hoặc link video MP4"
                   className="w-full mt-1 px-4 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#5A5A40]"
                 />
               </div>
