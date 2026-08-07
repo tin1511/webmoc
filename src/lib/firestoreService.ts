@@ -283,7 +283,7 @@ export function subscribeToCraftVideos(
     (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        if (data && Array.isArray(data.items) && data.items.length > 0) {
+        if (data && Array.isArray(data.items)) {
           onUpdate(data.items);
           return;
         }
