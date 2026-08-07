@@ -26,6 +26,7 @@ import {
   Film,
   Globe,
   Save,
+  Sparkles,
 } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
 import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from '../types/auth';
