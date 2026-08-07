@@ -1,3 +1,31 @@
+export interface OrderItem {
+  productId: string;
+  productName: string;
+  productImage: string;
+  village?: string;
+  price: number;
+  quantity: number;
+}
+
+export type OrderStatus = 'Mới tiếp nhận' | 'Đang xử lý' | 'Đang giao hàng' | 'Đã hoàn thành' | 'Đã hủy';
+
+export interface Order {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  items: OrderItem[];
+  subtotal: number;
+  discount: number;
+  shippingFee: number;
+  total: number;
+  promoCode?: string;
+  status: OrderStatus;
+  createdAt: string;
+  updatedAt?: string;
+  notes?: string;
+}
+
 export interface UserAccount {
   username: string;
   name: string;
