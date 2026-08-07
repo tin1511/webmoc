@@ -75,7 +75,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Video State in Admin Modal
-  const [videoList, setVideoList] = useState<VideoItem[]>(() => craftVideos && craftVideos.length > 0 ? craftVideos : INITIAL_CRAFT_VIDEOS);
+  const [videoList, setVideoList] = useState<VideoItem[]>(() => craftVideos !== undefined ? craftVideos : INITIAL_CRAFT_VIDEOS);
   const [newVideoTitle, setNewVideoTitle] = useState('');
   const [newVideoTag, setNewVideoTag] = useState('Chế Tác Gỗ');
   const [newVideoDesc, setNewVideoDesc] = useState('');
@@ -84,7 +84,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [newVideoDuration, setNewVideoDuration] = useState('01:30');
 
   React.useEffect(() => {
-    if (craftVideos && craftVideos.length > 0) {
+    if (craftVideos !== undefined) {
       setVideoList(craftVideos);
     }
   }, [craftVideos]);
