@@ -18,7 +18,7 @@ import { SecurityModal } from './components/SecurityModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { PRODUCTS, Product } from './data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG } from './types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from './types/auth';
 import { Filter, Sparkles, Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   subscribeToProducts,
@@ -28,6 +28,8 @@ import {
   toggleStockInFirestore,
   subscribeToFooterConfig,
   saveFooterConfigToFirestore,
+  subscribeToHeaderConfig,
+  saveHeaderConfigToFirestore,
 } from './lib/firestoreService';
 
 export default function App() {
@@ -35,7 +37,8 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
 
-  // Footer config state synced with Firestore cloud database
+  // Header & Footer config states synced with Firestore cloud database
+  const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [footerConfig, setFooterConfig] = useState<FooterConfig>(DEFAULT_FOOTER_CONFIG);
 
   // Subscribe to real-time Firestore products collection
@@ -47,6 +50,14 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Subscribe to real-time Firestore header configuration
+  useEffect(() => {
+    const unsubscribe = subscribeToHeaderConfig((config) => {
+      setHeaderConfig(config);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Subscribe to real-time Firestore footer configuration
   useEffect(() => {
     const unsubscribe = subscribeToFooterConfig((config) => {
@@ -54,6 +65,12 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleSaveHeaderConfig = async (config: HeaderConfig) => {
+    setHeaderConfig(config);
+    await saveHeaderConfigToFirestore(config);
+    showToast('✨ Đã cập nhật cấu hình Đầu Trang (Header) thành công!');
+  };
 
   const handleSaveFooterConfig = async (config: FooterConfig) => {
     setFooterConfig(config);
@@ -314,6 +331,7 @@ export default function App() {
         onOpenAdminDashboard={handleOpenAdmin}
         onOpenSecurity={() => setIsSecurityOpen(true)}
         onLogout={handleLogout}
+        headerConfig={headerConfig}
       />
 
       {/* Main Content */}
@@ -513,6 +531,8 @@ export default function App() {
         onToggleStock={handleToggleStock}
         footerConfig={footerConfig}
         onSaveFooterConfig={handleSaveFooterConfig}
+        headerConfig={headerConfig}
+        onSaveHeaderConfig={handleSaveHeaderConfig}
       />
 
 
