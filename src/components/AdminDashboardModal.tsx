@@ -30,7 +30,6 @@ import {
 } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
 import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from '../types/auth';
-import { VideoItem, INITIAL_CRAFT_VIDEOS } from './CraftVideoSection';
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -47,8 +46,6 @@ interface AdminDashboardModalProps {
   onSaveFooterConfig?: (config: FooterConfig) => void;
   headerConfig?: HeaderConfig;
   onSaveHeaderConfig?: (config: HeaderConfig) => void;
-  craftVideos?: VideoItem[];
-  onSaveCraftVideos?: (videos: VideoItem[]) => Promise<void> | void;
 }
 
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
@@ -66,28 +63,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onSaveFooterConfig,
   headerConfig,
   onSaveHeaderConfig,
-  craftVideos,
-  onSaveCraftVideos,
 }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'videos' | 'header' | 'footer'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'header' | 'footer'>('stats');
   const [productSubMode, setProductSubMode] = useState<'list' | 'form'>('list');
   const [searchFilter, setSearchFilter] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
-  // Video State in Admin Modal
-  const [videoList, setVideoList] = useState<VideoItem[]>(() => craftVideos !== undefined ? craftVideos : INITIAL_CRAFT_VIDEOS);
-  const [newVideoTitle, setNewVideoTitle] = useState('');
-  const [newVideoTag, setNewVideoTag] = useState('Chế Tác Gỗ');
-  const [newVideoDesc, setNewVideoDesc] = useState('');
-  const [newVideoUrl, setNewVideoUrl] = useState('');
-  const [newVideoThumb, setNewVideoThumb] = useState('');
-  const [newVideoDuration, setNewVideoDuration] = useState('01:30');
-
-  React.useEffect(() => {
-    if (craftVideos !== undefined) {
-      setVideoList(craftVideos);
-    }
-  }, [craftVideos]);
 
   const [headerForm, setHeaderForm] = useState<HeaderConfig>(() => ({
     ...DEFAULT_HEADER_CONFIG,
@@ -514,18 +494,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
           >
             <Package className="w-4 h-4" />
             <span>Sản Phẩm ({totalProducts})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('videos')}
-            className={`flex-1 py-3.5 flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer ${
-              activeTab === 'videos'
-                ? 'border-[#8B4513] text-[#8B4513] bg-[#FDFBF7] font-bold'
-                : 'border-transparent text-[#6B665E] hover:text-[#2D2926]'
-            }`}
-          >
-            <Film className="w-4 h-4 text-[#8B4513]" />
-            <span>Video Chế Tác ({videoList.length})</span>
           </button>
 
           <button
@@ -1066,230 +1034,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   <p className="text-xs text-[#6B665E] leading-relaxed">
                     Dữ liệu doanh thu và tồn kho được tự động tính toán đồng bộ theo thời gian thực mỗi khi bạn thêm sản phẩm mới, cập nhật giá bán hoặc xóa sản phẩm khỏi gian hàng.
                   </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'videos' && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#F5F3EF] p-4 rounded-2xl border border-[#EAE7E2] gap-3">
-                <div>
-                  <h4 className="font-serif-vi font-bold text-base text-[#2D2926] flex items-center gap-2">
-                    <Film className="w-5 h-5 text-[#8B4513]" />
-                    Quản Lý Video Quy Trình Chế Tác
-                  </h4>
-                  <p className="text-xs text-[#6B665E] mt-0.5">
-                    Thêm, xóa và lưu danh sách video giới thiệu quy trình cắt khắc laser thủ công lên Cloud
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm('Khôi phục danh sách video về 3 video mẫu ban đầu?')) {
-                        setVideoList(INITIAL_CRAFT_VIDEOS);
-                        if (onSaveCraftVideos) onSaveCraftVideos(INITIAL_CRAFT_VIDEOS);
-                        setStatusMessage({ text: 'Đã khôi phục video mẫu ban đầu!', type: 'success' });
-                      }
-                    }}
-                    className="text-xs font-semibold text-[#8B4513] hover:underline px-3 py-1.5 cursor-pointer"
-                  >
-                    Khôi Phục Mẫu
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (onSaveCraftVideos) {
-                        await onSaveCraftVideos(videoList);
-                        setStatusMessage({ text: 'Đã lưu danh sách Video Quy Trình Chế Tác lên Cloud thành công!', type: 'success' });
-                      }
-                    }}
-                    className="bg-[#5A5A40] hover:bg-[#4A4A35] text-white px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Lưu Cloud</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Form Add New Video */}
-              <div className="bg-white p-5 rounded-3xl border border-[#EAE7E2] space-y-4">
-                <div className="bg-[#FFF8F0] border border-[#F5E0C3] p-3.5 rounded-2xl text-xs text-[#8B4513] space-y-1">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-[#8B4513]" />
-                    Hướng dẫn tải video dung lượng lớn (&gt; 5MB):
-                  </div>
-                  <p className="text-[11.5px] leading-relaxed text-[#6B4724]">
-                    Cơ sở dữ liệu web có giới hạn dung lượng lưu trữ chữ. Với video 5MB, 50MB hay 1GB+, cách tốt nhất là tải video lên <strong>YouTube</strong> (chế độ Không công khai - Unlisted) hoặc <strong>Google Drive</strong>, sau đó dán link vào ô bên dưới. Trình phát sẽ tự động nhúng và phát chuẩn HD mượt mà!
-                  </p>
-                </div>
-
-                <h5 className="font-serif-vi font-bold text-sm text-[#2D2926] flex items-center gap-2 border-b border-[#EAE7E2] pb-3">
-                  <Plus className="w-4 h-4 text-[#8B4513]" />
-                  Thêm Video Quy Trình Mới
-                </h5>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!newVideoTitle.trim()) return;
-                    const newVid: VideoItem = {
-                      id: 'vid-' + Date.now(),
-                      title: newVideoTitle.trim(),
-                      tag: newVideoTag.trim() || 'Chế Tác Gỗ',
-                      description: newVideoDesc.trim() || 'Video quay cận cảnh công đoạn chế tác tỉ mỉ tại xưởng Mộc Điêu.',
-                      videoUrl: newVideoUrl.trim() || 'https://assets.mixkit.co/videos/preview/mixkit-carpenter-working-with-wood-41618-large.mp4',
-                      thumbnailUrl: newVideoThumb.trim() || 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
-                      duration: newVideoDuration.trim() || '01:30',
-                    };
-                    const updated = [newVid, ...videoList];
-                    setVideoList(updated);
-                    setNewVideoTitle('');
-                    setNewVideoDesc('');
-                    setNewVideoUrl('');
-                    setNewVideoThumb('');
-                    if (onSaveCraftVideos) {
-                      await onSaveCraftVideos(updated);
-                    }
-                    setStatusMessage({ text: 'Đã thêm video mới và lưu lên Cloud!', type: 'success' });
-                  }}
-                  className="space-y-4"
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-[#2D2926] mb-1">Tên Tiêu Đề Video *</label>
-                      <input
-                        type="text"
-                        value={newVideoTitle}
-                        onChange={(e) => setNewVideoTitle(e.target.value)}
-                        placeholder="VD: Quy Trình Khắc Laser Ảnh Chân Dung Lên Gỗ Maple"
-                        className="w-full px-3.5 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#5A5A40]"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#2D2926] mb-1">Thẻ / Phân Loại (Tag)</label>
-                      <input
-                        type="text"
-                        value={newVideoTag}
-                        onChange={(e) => setNewVideoTag(e.target.value)}
-                        placeholder="VD: Khắc Laser HD, Móc Khóa Custom..."
-                        className="w-full px-3.5 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#5A5A40]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-[#2D2926] mb-1">Đường Dẫn Video (YouTube hoặc MP4)</label>
-                      <input
-                        type="url"
-                        value={newVideoUrl}
-                        onChange={(e) => setNewVideoUrl(e.target.value)}
-                        placeholder="https://www.youtube.com/watch?v=... hoặc link video MP4"
-                        className="w-full px-3.5 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#5A5A40]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#2D2926] mb-1">Thời Lượng (VD: 01:45)</label>
-                      <input
-                        type="text"
-                        value={newVideoDuration}
-                        onChange={(e) => setNewVideoDuration(e.target.value)}
-                        placeholder="01:45"
-                        className="w-full px-3.5 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#5A5A40]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#2D2926] mb-1">Đường Dẫn Ảnh Thu Nhỏ (Poster / Thumbnail URL)</label>
-                    <input
-                      type="url"
-                      value={newVideoThumb}
-                      onChange={(e) => setNewVideoThumb(e.target.value)}
-                      placeholder="https://images.unsplash.com/..."
-                      className="w-full px-3.5 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#5A5A40]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#2D2926] mb-1">Mô Tả Ngắn</label>
-                    <textarea
-                      rows={2}
-                      value={newVideoDesc}
-                      onChange={(e) => setNewVideoDesc(e.target.value)}
-                      placeholder="Cận cảnh quy trình cắt khắc tỉ mỉ..."
-                      className="w-full px-3.5 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#5A5A40]"
-                    />
-                  </div>
-
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="submit"
-                      className="bg-[#8B4513] hover:bg-[#6E360F] text-white px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Thêm Video Này</span>
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Video List Table */}
-              <div className="bg-white rounded-3xl border border-[#EAE7E2] overflow-hidden shadow-2xs">
-                <div className="p-4 bg-[#FDFBF7] border-b border-[#EAE7E2] flex items-center justify-between">
-                  <h5 className="font-serif-vi font-bold text-sm text-[#2D2926]">
-                    Danh Sách Video Hiện Có ({videoList.length})
-                  </h5>
-                </div>
-                <div className="divide-y divide-[#EAE7E2]">
-                  {videoList.map((vid) => (
-                    <div key={vid.id} className="p-4 flex items-center justify-between gap-4 hover:bg-[#FDFBF7] transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative w-20 h-14 rounded-xl overflow-hidden bg-black shrink-0 border border-[#EAE7E2]">
-                          <img
-                            src={vid.thumbnailUrl}
-                            alt={vid.title}
-                            className="w-full h-full object-cover opacity-80"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Video className="w-5 h-5 text-white drop-shadow-md" />
-                          </div>
-                          <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[9px] px-1 rounded">
-                            {vid.duration}
-                          </span>
-                        </div>
-                        <div className="min-w-0">
-                          <span className="inline-block bg-[#5A5A40]/10 text-[#5A5A40] text-[10px] font-bold px-2 py-0.5 rounded-full mb-1">
-                            {vid.tag}
-                          </span>
-                          <h6 className="font-bold text-xs text-[#2D2926] truncate">
-                            {vid.title}
-                          </h6>
-                          <p className="text-[11px] text-[#6B665E] truncate max-w-md">
-                            {vid.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const updated = videoList.filter((v) => v.id !== vid.id);
-                          setVideoList(updated);
-                          if (onSaveCraftVideos) {
-                            await onSaveCraftVideos(updated);
-                          }
-                          setStatusMessage({ text: 'Đã xoá video khỏi danh sách!', type: 'success' });
-                        }}
-                        className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
-                        title="Xóa video"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
