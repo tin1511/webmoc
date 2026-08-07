@@ -7,7 +7,8 @@ import {
   onSnapshot,
   getDoc,
   addDoc
-} from 'firebase/firestore';
+} 
+from 'firebase/firestore';
 import { db } from './firebase';
 import { Product, PRODUCTS } from '../data/products';
 import { UserAccount } from '../types/auth';
@@ -16,6 +17,13 @@ const PRODUCTS_COLLECTION = 'products';
 const USERS_COLLECTION = 'users';
 const LOGS_COLLECTION = 'login_logs';
 const META_COLLECTION = '_metadata';
+
+/**
+ * Remove undefined properties from an object so Firestore setDoc/updateDoc doesn't fail.
+ */
+function cleanForFirestore<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
 
 let isProductInitChecked = false;
 
@@ -43,7 +51,8 @@ export function subscribeToProducts(
           const prodDocs = await collection(db, PRODUCTS_COLLECTION);
           console.log('Initializing default products in Firestore database...');
           for (const item of PRODUCTS) {
-            await setDoc(doc(db, PRODUCTS_COLLECTION, item.id), item);
+            const cleanItem = cleanForFirestore(item);
+            await setDoc(doc(db, PRODUCTS_COLLECTION, cleanItem.id), cleanItem);
           }
         }
       })
@@ -70,7 +79,8 @@ export function subscribeToProducts(
  */
 export async function restoreDefaultProductsToFirestore(): Promise<void> {
   for (const item of PRODUCTS) {
-    await setDoc(doc(db, PRODUCTS_COLLECTION, item.id), item);
+    const cleanItem = cleanForFirestore(item);
+    await setDoc(doc(db, PRODUCTS_COLLECTION, cleanItem.id), cleanItem);
   }
 }
 
@@ -78,14 +88,16 @@ export async function restoreDefaultProductsToFirestore(): Promise<void> {
  * Add or overwrite a product in Firestore
  */
 export async function addProductToFirestore(product: Product): Promise<void> {
-  await setDoc(doc(db, PRODUCTS_COLLECTION, product.id), product);
+  const cleanProduct = cleanForFirestore(product);
+  await setDoc(doc(db, PRODUCTS_COLLECTION, cleanProduct.id), cleanProduct);
 }
 
 /**
  * Update an existing product in Firestore
  */
 export async function updateProductInFirestore(product: Product): Promise<void> {
-  await setDoc(doc(db, PRODUCTS_COLLECTION, product.id), product, { merge: true });
+  const cleanProduct = cleanForFirestore(product);
+  await setDoc(doc(db, PRODUCTS_COLLECTION, cleanProduct.id), cleanProduct, { merge: true });
 }
 
 /**
@@ -168,7 +180,8 @@ export function subscribeToUsers(
 export async function saveUserToFirestore(
   user: UserAccount & { password?: string }
 ): Promise<void> {
-  await setDoc(doc(db, USERS_COLLECTION, user.username.toLowerCase()), user, { merge: true });
+  const cleanUser = cleanForFirestore(user);
+  await setDoc(doc(db, USERS_COLLECTION, cleanUser.username.toLowerCase()), cleanUser, { merge: true });
 }
 
 /**
