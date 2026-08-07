@@ -14,6 +14,20 @@ export const DEFAULT_ADMIN: UserAccount = {
   avatar: '👑'
 };
 
+export interface HeaderConfig {
+  announcementText: string;
+  brandTitle: string;
+  brandTagline: string;
+  searchPlaceholder: string;
+}
+
+export const DEFAULT_HEADER_CONFIG: HeaderConfig = {
+  announcementText: 'Miễn phí khắc tên & thiết kế demo theo yêu cầu • Nhập mã MOCGO10 giảm ngay 10%',
+  brandTitle: 'MỘC ĐIÊU',
+  brandTagline: 'Khắc Gỗ Laser Theo Yêu Cầu',
+  searchPlaceholder: 'Tìm kiếm tinh hoa...',
+};
+
 export interface FooterConfig {
   brandName: string;
   brandSub: string;
