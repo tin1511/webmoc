@@ -1,11 +1,14 @@
 import React from 'react';
 import { Mail, Phone, MapPin, Heart, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
+import { FooterConfig, DEFAULT_FOOTER_CONFIG } from '../types/auth';
 
 interface FooterProps {
   onOpenSecurity?: () => void;
+  footerConfig?: FooterConfig;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenSecurity }) => {
+export const Footer: React.FC<FooterProps> = ({ onOpenSecurity, footerConfig }) => {
+  const cfg = { ...DEFAULT_FOOTER_CONFIG, ...footerConfig };
 
   return (
     <footer className="bg-[#2D2926] text-[#FDFBF7] pt-16 pb-8 border-t border-[#EAE7E2]/10">
@@ -18,10 +21,10 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSecurity }) => {
             </div>
             <div>
               <h5 className="font-serif-vi font-semibold text-sm">
-                Giao Hàng Toàn Quốc
+                {cfg.benefit1Title}
               </h5>
               <p className="text-xs text-[#8C877E]">
-                Đóng gói an toàn, miễn phí cho đơn hàng trên 1.000.000đ
+                {cfg.benefit1Desc}
               </p>
             </div>
           </div>
@@ -32,9 +35,10 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSecurity }) => {
             </div>
             <div>
               <h5 className="font-serif-vi font-semibold text-sm">
+                {cfg.benefit2Title}
               </h5>
               <p className="text-xs text-[#8C877E]">
-                Cam kết 100% nguyên liệu tự nhiên và nghệ nhân thủ công
+                {cfg.benefit2Desc}
               </p>
             </div>
           </div>
@@ -45,10 +49,10 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSecurity }) => {
             </div>
             <div>
               <h5 className="font-serif-vi font-semibold text-sm">
-                Đổi Trả An Tâm
+                {cfg.benefit3Title}
               </h5>
               <p className="text-xs text-[#8C877E]">
-                Được kiểm tra sản phẩm trước khi nhận hàng & thanh toán
+                {cfg.benefit3Desc}
               </p>
             </div>
           </div>
@@ -60,30 +64,60 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSecurity }) => {
           <div className="lg:col-span-4 space-y-4">
             <div className="flex flex-col">
               <h4 className="text-2xl font-bold tracking-tight text-[#EAE7E2] font-serif-vi">
-                MỘC
+                {cfg.brandName}
               </h4>
               <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#8B4513]">
-                Khắc Gỗ Laser Theo Yêu Cầu
+                {cfg.brandSub}
               </span>
             </div>
             <p className="text-xs text-[#8C877E] leading-relaxed max-w-sm">
-              Xưởng chế tác móc khóa gỗ, tranh/ảnh chân dung khắc laser, thước gỗ học sinh, quà tặng gỗ cá nhân hóa theo yêu cầu uy tín 100%.
+              {cfg.brandDesc}
             </p>
             <div className="space-y-2 text-xs text-[#DEDAD2]">
               <p className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[#8B4513]" />
-                <span></span>
+                <MapPin className="w-4 h-4 text-[#8B4513] shrink-0" />
+                <span>{cfg.address}</span>
               </p>
               <p className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-[#5A5A40]" />
-                <span>Hotline/Zalo đặt khắc: 034 222 5597</span>
+                <Phone className="w-4 h-4 text-[#5A5A40] shrink-0" />
+                <span>{cfg.phone}</span>
               </p>
               <p className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[#8B4513]" />
-                <span>contact: mockhoa0812@gmail.com</span>
+                <Mail className="w-4 h-4 text-[#8B4513] shrink-0" />
+                <span>{cfg.email}</span>
               </p>
             </div>
           </div>
+
+          {/* Col 2: Làng nghề nổi bật */}
+          <div className="lg:col-span-3 space-y-3">
+            <h5 className="text-sm font-bold uppercase tracking-widest text-[#EAE7E2]">
+              Làng Nghề Mộc
+            </h5>
+            <ul className="space-y-2 text-xs text-[#8C877E]">
+              <li>
+                <a href="#stories-section" className="hover:text-white transition-colors">
+                  Làng Mộc Kim Bồng (Quảng Nam)
+                </a>
+              </li>
+              <li>
+                <a href="#stories-section" className="hover:text-white transition-colors">
+                  Làng Mộc Đồng Kỵ (Bắc Ninh)
+                </a>
+              </li>
+              <li>
+                <a href="#stories-section" className="hover:text-white transition-colors">
+                  Làng Mộc Chàng Sơn (Hà Nội)
+                </a>
+              </li>
+              <li>
+                <a href="#stories-section" className="hover:text-white transition-colors">
+                  Làng Mộc La Xuyên (Nam Định)
+                </a>
+              </li>
+            </ul>
+          </div>
+
           {/* Col 3: Hỗ trợ khách hàng */}
           <div className="lg:col-span-2 space-y-3">
             <h5 className="text-sm font-bold uppercase tracking-widest text-[#EAE7E2]">
@@ -106,7 +140,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSecurity }) => {
                   onClick={onOpenSecurity}
                   className="hover:text-white transition-colors cursor-pointer text-left"
                 >
-                  Bảo mật thông tin
+                  Bảo mật thông tin (SSL 256-bit)
                 </button>
               </li>
               <li>
@@ -150,7 +184,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSecurity }) => {
 
         {/* Bottom copyright */}
         <div className="pt-8 border-t border-[#EAE7E2]/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-[11px] uppercase tracking-[0.2em] text-[#8C877E]">
-          <span>© 2026 BẢN SẮC VIỆT • TINH HOA LÀNG NGHỀ</span>
+          <span>{cfg.copyright}</span>
           <span className="flex items-center gap-1.5">
             Thiết kế với <Heart className="w-3 h-3 text-[#8B4513] fill-current" /> tại Việt Nam
           </span>
@@ -160,3 +194,4 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSecurity }) => {
     </footer>
   );
 };
+
