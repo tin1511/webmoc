@@ -1171,12 +1171,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-[#2D2926] mb-1">Đường Dẫn (URL) Video MP4</label>
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">Đường Dẫn Video (YouTube hoặc MP4)</label>
                       <input
                         type="url"
                         value={newVideoUrl}
                         onChange={(e) => setNewVideoUrl(e.target.value)}
-                        placeholder="https://.../video.mp4"
+                        placeholder="https://www.youtube.com/watch?v=... hoặc link video MP4"
                         className="w-full px-3.5 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#5A5A40]"
                       />
                     </div>
