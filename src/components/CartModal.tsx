@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { X, Trash2, ShoppingBag, ArrowRight, CheckCircle2, ShieldCheck, Ticket } from 'lucide-react';
+import { X, Trash2, ShoppingBag, ArrowRight, CheckCircle2, ShieldCheck, Ticket, Loader2 } from 'lucide-react';
 import { Product, PROMO_CODES } from '../data/products';
+import { addOrderToFirestore } from '../lib/firestoreService';
+import { Order } from '../types/auth';
 
 export interface CartItem {
   product: Product;
@@ -14,6 +16,7 @@ interface CartModalProps {
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
   onClearCart: () => void;
+  onPlaceOrder?: (order: Order) => Promise<void> | void;
 }
 
 export const CartModal: React.FC<CartModalProps> = ({
@@ -23,12 +26,14 @@ export const CartModal: React.FC<CartModalProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
+  onPlaceOrder,
 }) => {
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
   const [promoError, setPromoError] = useState('');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // Form checkout state
   const [customerName, setCustomerName] = useState('');
@@ -65,17 +70,56 @@ export const CartModal: React.FC<CartModalProps> = ({
     }
   };
 
-  const handleCompleteOrder = (e: React.FormEvent) => {
+  const handleCompleteOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !customerPhone || !customerAddress) {
       alert('Vui lòng điền đầy đủ thông tin giao hàng!');
       return;
     }
+
+    setIsSubmittingOrder(true);
+    const orderId = `MD-${Date.now().toString().slice(-6)}`;
+    const newOrder: Order = {
+      id: orderId,
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      customerAddress: customerAddress.trim(),
+      items: cartItems.map((item) => ({
+        productId: item.product.id,
+        productName: item.product.name,
+        productImage: item.product.imageUrl,
+        village: item.product.village || '',
+        price: item.product.price,
+        quantity: item.quantity,
+      })),
+      subtotal,
+      discount,
+      shippingFee,
+      total,
+      promoCode: appliedPromo || undefined,
+      status: 'Mới tiếp nhận',
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await addOrderToFirestore(newOrder);
+      if (onPlaceOrder) {
+        await onPlaceOrder(newOrder);
+      }
+    } catch (err) {
+      console.error('Error saving order to Firestore:', err);
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+
     setOrderSuccess(true);
     setTimeout(() => {
       onClearCart();
       setOrderSuccess(false);
       setIsCheckingOut(false);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerAddress('');
       onClose();
     }, 2500);
   };
@@ -322,9 +366,17 @@ export const CartModal: React.FC<CartModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-[#8B4513] text-white py-3 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#6E360F] transition-all shadow-md"
+                  disabled={isSubmittingOrder}
+                  className="flex-1 bg-[#8B4513] text-white py-3 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#6E360F] transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer"
                 >
-                  Xác Nhận Đặt Hàng
+                  {isSubmittingOrder ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Đang Gửi Đơn Hàng...</span>
+                    </>
+                  ) : (
+                    <span>Xác Nhận Đặt Hàng</span>
+                  )}
                 </button>
               </div>
             </form>
