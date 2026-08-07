@@ -24,9 +24,11 @@ import {
   ArrowLeft,
   Video,
   Film,
+  Globe,
+  Save,
 } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
-import { UserAccount } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG } from '../types/auth';
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -39,6 +41,8 @@ interface AdminDashboardModalProps {
   onDeleteProduct: (id: string) => void;
   onRequestDelete?: (product: Product) => void;
   onToggleStock: (id: string) => void;
+  footerConfig?: FooterConfig;
+  onSaveFooterConfig?: (config: FooterConfig) => void;
 }
 
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
@@ -52,11 +56,25 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onDeleteProduct,
   onRequestDelete,
   onToggleStock,
+  footerConfig,
+  onSaveFooterConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'products'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'footer'>('stats');
   const [productSubMode, setProductSubMode] = useState<'list' | 'form'>('list');
   const [searchFilter, setSearchFilter] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const [footerForm, setFooterForm] = useState<FooterConfig>(() => ({
+    ...DEFAULT_FOOTER_CONFIG,
+    ...footerConfig,
+  }));
+
+  React.useEffect(() => {
+    if (footerConfig) {
+      setFooterForm({ ...DEFAULT_FOOTER_CONFIG, ...footerConfig });
+    }
+  }, [footerConfig]);
+
 
   // Editing product state (if null, creating new)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -308,7 +326,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         originalPrice: originalPrice ? Number(originalPrice) : undefined,
         imageUrl,
         videoUrl: videoUrl.trim() || undefined,
-        village: village.trim() || 'Mộc ',
+        village: village.trim() || 'Mộc Điêu',
         province: province.trim() || 'Việt Nam',
         inStock,
         shortDesc: shortDesc.trim() || 'Tác phẩm thủ công mỹ nghệ cao cấp.',
@@ -332,7 +350,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         originalPrice: originalPrice ? Number(originalPrice) : undefined,
         imageUrl,
         videoUrl: videoUrl.trim() || undefined,
-        village: village.trim() || 'Mộc ',
+        village: village.trim() || 'Mộc Điêu',
         province: province.trim() || 'Việt Nam',
         rating: 5.0,
         reviewsCount: 1,
@@ -458,7 +476,20 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             <Package className="w-4 h-4" />
             <span>Quản Lý Sản Phẩm ({totalProducts})</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('footer')}
+            className={`flex-1 py-3.5 flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer ${
+              activeTab === 'footer'
+                ? 'border-[#8B4513] text-[#8B4513] bg-[#FDFBF7] font-bold'
+                : 'border-transparent text-[#6B665E] hover:text-[#2D2926]'
+            }`}
+          >
+            <Globe className="w-4 h-4 text-[#8B4513]" />
+            <span>Chân Trang (Footer)</span>
+          </button>
         </div>
+
 
         {/* Status Notification Banner */}
         {statusMessage && (
@@ -976,6 +1007,212 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
               </div>
             </div>
           )}
+
+          {activeTab === 'footer' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between bg-[#F0EDE9] p-4 rounded-2xl border border-[#EAE7E2]">
+                <div>
+                  <h4 className="font-serif-vi font-bold text-base text-[#2D2926] flex items-center gap-2">
+                    <Globe className="w-5 h-5 text-[#8B4513]" />
+                    Cấu Hình Nội Dung Chân Trang (Footer)
+                  </h4>
+                  <p className="text-xs text-[#6B665E] mt-0.5">
+                    Tùy chỉnh thông tin thương hiệu, địa chỉ, số hotline, email và các chính sách hiển thị ở chân trang website
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#8B4513] bg-[#8B4513]/10 px-3 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+                  <ShieldCheck className="w-4 h-4" /> Quyền Admin
+                </span>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (onSaveFooterConfig) {
+                    onSaveFooterConfig(footerForm);
+                  }
+                  setStatusMessage({
+                    text: 'Đã lưu và cập nhật nội dung Chân Trang (Footer) lên Cloud thành công!',
+                    type: 'success',
+                  });
+                }}
+                className="space-y-6 bg-white p-6 rounded-3xl border border-[#EAE7E2] shadow-2xs"
+              >
+                {/* SECTION 1: Brand Info */}
+                <div className="space-y-4 border-b border-[#EAE7E2] pb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#8B4513]">
+                    1. Thông Tin Thương Hiệu & Mô Tả Chân Trang
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Tên Thương Hiệu (Tiêu Đề)
+                      </label>
+                      <input
+                        type="text"
+                        value={footerForm.brandName}
+                        onChange={(e) => setFooterForm({ ...footerForm, brandName: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Dòng Phụ / Slogan Dưới Tên
+                      </label>
+                      <input
+                        type="text"
+                        value={footerForm.brandSub}
+                        onChange={(e) => setFooterForm({ ...footerForm, brandSub: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Đoạn Giới Thiệu Chân Trang
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={footerForm.brandDesc}
+                        onChange={(e) => setFooterForm({ ...footerForm, brandDesc: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION 2: Contact Details */}
+                <div className="space-y-4 border-b border-[#EAE7E2] pb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#8B4513]">
+                    2. Thông Tin Liên Hệ & Dòng Bản Quyền
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Địa Chỉ Cửa Hàng / Làng Nghề
+                      </label>
+                      <input
+                        type="text"
+                        value={footerForm.address}
+                        onChange={(e) => setFooterForm({ ...footerForm, address: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Hotline / Zalo Hỗ Trợ
+                      </label>
+                      <input
+                        type="text"
+                        value={footerForm.phone}
+                        onChange={(e) => setFooterForm({ ...footerForm, phone: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Email Liên Hệ
+                      </label>
+                      <input
+                        type="email"
+                        value={footerForm.email}
+                        onChange={(e) => setFooterForm({ ...footerForm, email: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Dòng Bản Quyền (Copyright)
+                      </label>
+                      <input
+                        type="text"
+                        value={footerForm.copyright}
+                        onChange={(e) => setFooterForm({ ...footerForm, copyright: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION 3: Top Benefits Row */}
+                <div className="space-y-4 border-b border-[#EAE7E2] pb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#8B4513]">
+                    3. Khối Tiện Ích Cam Kết (3 Cột Đầu Chân Trang)
+                  </h5>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Benefit 1 */}
+                    <div className="bg-[#FDFBF7] p-3.5 rounded-2xl border border-[#EAE7E2] space-y-2">
+                      <span className="text-[10px] font-bold text-[#5A5A40] uppercase">Cột 1: Giao Hàng</span>
+                      <input
+                        type="text"
+                        placeholder="Tiêu đề 1"
+                        value={footerForm.benefit1Title}
+                        onChange={(e) => setFooterForm({ ...footerForm, benefit1Title: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                      <textarea
+                        rows={2}
+                        placeholder="Mô tả 1"
+                        value={footerForm.benefit1Desc}
+                        onChange={(e) => setFooterForm({ ...footerForm, benefit1Desc: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+
+                    {/* Benefit 2 */}
+                    <div className="bg-[#FDFBF7] p-3.5 rounded-2xl border border-[#EAE7E2] space-y-2">
+                      <span className="text-[10px] font-bold text-[#8B4513] uppercase">Cột 2: Xác Thực</span>
+                      <input
+                        type="text"
+                        placeholder="Tiêu đề 2"
+                        value={footerForm.benefit2Title}
+                        onChange={(e) => setFooterForm({ ...footerForm, benefit2Title: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                      <textarea
+                        rows={2}
+                        placeholder="Mô tả 2"
+                        value={footerForm.benefit2Desc}
+                        onChange={(e) => setFooterForm({ ...footerForm, benefit2Desc: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+
+                    {/* Benefit 3 */}
+                    <div className="bg-[#FDFBF7] p-3.5 rounded-2xl border border-[#EAE7E2] space-y-2">
+                      <span className="text-[10px] font-bold text-[#5A5A40] uppercase">Cột 3: Đổi Trả</span>
+                      <input
+                        type="text"
+                        placeholder="Tiêu đề 3"
+                        value={footerForm.benefit3Title}
+                        onChange={(e) => setFooterForm({ ...footerForm, benefit3Title: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                      <textarea
+                        rows={2}
+                        placeholder="Mô tả 3"
+                        value={footerForm.benefit3Desc}
+                        onChange={(e) => setFooterForm({ ...footerForm, benefit3Desc: e.target.value })}
+                        className="w-full px-3 py-1.5 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="submit"
+                    className="bg-[#8B4513] hover:bg-[#6E360F] text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Lưu Cấu Hình Chân Trang (Cloud)</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
