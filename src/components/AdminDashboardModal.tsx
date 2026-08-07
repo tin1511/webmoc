@@ -22,6 +22,8 @@ import {
   ArrowUpRight,
   Box,
   ArrowLeft,
+  Video,
+  Film,
 } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
 import { UserAccount } from '../types/auth';
@@ -234,6 +236,50 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     }
   };
 
+  const handleVideoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      setStatusMessage({
+        text: 'Vui lòng chọn tệp định dạng video (MP4, WEBM, MOV...)',
+        type: 'error',
+      });
+      return;
+    }
+
+    if (file.size > 900 * 1024) {
+      setStatusMessage({
+        text: `Tệp video quá lớn (${(file.size / (1024 * 1024)).toFixed(1)}MB). Dung lượng tối đa lưu trữ Cloud trực tiếp là 900KB. Vui lòng chọn tệp video ngắn/nhẹ hơn hoặc dán link URL video từ internet.`,
+        type: 'error',
+      });
+      return;
+    }
+
+    setStatusMessage({
+      text: 'Đang tải video từ máy lên...',
+      type: 'success',
+    });
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) {
+        setVideoUrl(reader.result as string);
+        setStatusMessage({
+          text: 'Đã tải tệp video từ máy lên thành công (Dành riêng cho Admin)!',
+          type: 'success',
+        });
+      }
+    };
+    reader.onerror = () => {
+      setStatusMessage({
+        text: 'Không thể đọc tệp video này. Vui lòng thử lại.',
+        type: 'error',
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !price) {
@@ -262,7 +308,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         originalPrice: originalPrice ? Number(originalPrice) : undefined,
         imageUrl,
         videoUrl: videoUrl.trim() || undefined,
-        village: village.trim() || 'Mộc Điêu',
+        village: village.trim() || 'Mộc ',
         province: province.trim() || 'Việt Nam',
         inStock,
         shortDesc: shortDesc.trim() || 'Tác phẩm thủ công mỹ nghệ cao cấp.',
@@ -286,7 +332,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
         originalPrice: originalPrice ? Number(originalPrice) : undefined,
         imageUrl,
         videoUrl: videoUrl.trim() || undefined,
-        village: village.trim() || 'Mộc Điêu',
+        village: village.trim() || 'Mộc ',
         province: province.trim() || 'Việt Nam',
         rating: 5.0,
         reviewsCount: 1,
@@ -650,16 +696,48 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                       </div>
 
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[#2D2926] mb-1.5">
-                          Link Video Chế Tác / Giới Thiệu (Tùy chọn)
-                        </label>
-                        <input
-                          type="text"
-                          value={videoUrl}
-                          onChange={(e) => setVideoUrl(e.target.value)}
-                          placeholder="VD: https://assets.mixkit.co/...mp4 hoặc đường dẫn video"
-                          className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#5A5A40]"
-                        />
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-[#2D2926]">
+                            Video Chế Tác / Giới Thiệu (Chỉ Admin)
+                          </label>
+                          <span className="text-[10px] font-bold text-[#8B4513] bg-[#8B4513]/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3" /> Quyền Admin
+                          </span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                          <div className="flex-1 flex gap-2 items-center">
+                            <input
+                              type="text"
+                              value={videoUrl}
+                              onChange={(e) => setVideoUrl(e.target.value)}
+                              placeholder="Dán link video https://... hoặc tải từ máy"
+                              className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#5A5A40]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="cursor-pointer bg-[#F0EDE9] hover:bg-[#E2DFDA] text-[#2D2926] px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border border-[#DEDAD2] transition-colors shrink-0">
+                              <Video className="w-4 h-4 text-[#8B4513]" />
+                              <span>Tải video từ máy</span>
+                              <input
+                                type="file"
+                                accept="video/*"
+                                onChange={handleVideoFileUpload}
+                                className="hidden"
+                              />
+                            </label>
+                            {videoUrl && (
+                              <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-black border border-[#EAE7E2] shrink-0 flex items-center justify-center">
+                                <video src={videoUrl} className="w-full h-full object-cover" muted />
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                  <Film className="w-4 h-4 text-white" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-[#8C877E] mt-1">
+                          * Dành riêng cho tài khoản Admin: Tải video từ máy (MP4, WEBM) hoặc dán đường dẫn link URL video giới thiệu quy trình chế tác.
+                        </p>
                       </div>
 
                       <div className="sm:col-span-2">
