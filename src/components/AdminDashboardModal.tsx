@@ -389,23 +389,24 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   };
 
   // Calculations for Sales & Revenue & Inventory Stats
-  const totalProducts = products.length;
-  const totalInStock = products.filter((p) => p.inStock).length;
-  const totalOutOfStock = products.filter((p) => !p.inStock).length;
+  const safeProducts = Array.isArray(products) ? products.filter(Boolean) : [];
+  const totalProducts = safeProducts.length;
+  const totalInStock = safeProducts.filter((p) => p && p.inStock).length;
+  const totalOutOfStock = safeProducts.filter((p) => p && !p.inStock).length;
   const stockPercentage = totalProducts > 0 ? Math.round((totalInStock / totalProducts) * 100) : 0;
 
   // Calculate sold units and total revenue per product
-  const getProductSoldUnits = (p: Product) => (p.reviewsCount ? p.reviewsCount * 4 + 12 : 16);
-  const totalUnitsSold = products.reduce((acc, p) => acc + getProductSoldUnits(p), 0);
-  const totalRevenue = products.reduce((acc, p) => acc + p.price * getProductSoldUnits(p), 0);
+  const getProductSoldUnits = (p: Product) => (p && p.reviewsCount ? p.reviewsCount * 4 + 12 : 16);
+  const totalUnitsSold = safeProducts.reduce((acc, p) => acc + getProductSoldUnits(p), 0);
+  const totalRevenue = safeProducts.reduce((acc, p) => acc + (Number(p?.price) || 0) * getProductSoldUnits(p), 0);
   const totalOrders = Math.round(totalUnitsSold / 1.8);
   const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
   // Revenue & Sold units breakdown by Category
-  const categoryStats = CATEGORIES_INFO.filter((c) => c.id !== 'tat-ca').map((cat) => {
-    const categoryProducts = products.filter((p) => p.category === cat.id);
+  const categoryStats = CATEGORIES_INFO.filter((c) => c && c.id !== 'tat-ca').map((cat) => {
+    const categoryProducts = safeProducts.filter((p) => p && p.category === cat.id);
     const catSoldUnits = categoryProducts.reduce((acc, p) => acc + getProductSoldUnits(p), 0);
-    const catRevenue = categoryProducts.reduce((acc, p) => acc + p.price * getProductSoldUnits(p), 0);
+    const catRevenue = categoryProducts.reduce((acc, p) => acc + (Number(p?.price) || 0) * getProductSoldUnits(p), 0);
     return {
       category: cat,
       productCount: categoryProducts.length,
@@ -416,20 +417,22 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   });
 
   // Top 5 Bestselling Products
-  const topProducts = [...products]
+  const topProducts = [...safeProducts]
     .map((p) => ({
       product: p,
       soldUnits: getProductSoldUnits(p),
-      revenue: p.price * getProductSoldUnits(p),
+      revenue: (Number(p?.price) || 0) * getProductSoldUnits(p),
     }))
     .sort((a, b) => b.soldUnits - a.soldUnits)
     .slice(0, 5);
 
-  const filteredProducts = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      p.shortDesc.toLowerCase().includes(searchFilter.toLowerCase())
-  );
+  const filteredProducts = safeProducts.filter((p) => {
+    if (!p) return false;
+    const nameStr = (p.name || '').toLowerCase();
+    const descStr = (p.shortDesc || '').toLowerCase();
+    const filterStr = (searchFilter || '').toLowerCase();
+    return nameStr.includes(filterStr) || descStr.includes(filterStr);
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2D2926]/70 backdrop-blur-sm animate-fadeIn">
@@ -582,33 +585,33 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         </thead>
                         <tbody className="divide-y divide-[#EAE7E2]">
                           {filteredProducts.map((p) => (
-                            <tr key={p.id} className="hover:bg-[#FDFBF7] transition-colors">
+                            <tr key={p.id || Math.random()} className="hover:bg-[#FDFBF7] transition-colors">
                               <td className="py-3 px-4">
                                 <div className="flex items-center gap-3">
                                   <img
-                                    src={p.imageUrl}
-                                    alt={p.name}
+                                    src={p.imageUrl || 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&q=80&w=800'}
+                                    alt={p.name || 'Sản phẩm'}
                                     className="w-12 h-12 rounded-xl object-cover border border-[#EAE7E2]"
                                   />
                                   <div>
                                     <p className="font-semibold text-sm text-[#2D2926] max-w-xs truncate">
-                                      {p.name}
+                                      {p.name || 'Sản phẩm chưa đặt tên'}
                                     </p>
                                     <p className="text-[11px] text-[#6B665E] max-w-xs truncate">
-                                      {p.shortDesc}
+                                      {p.shortDesc || ''}
                                     </p>
                                   </div>
                                 </div>
                               </td>
                               <td className="py-3 px-4">
                                 <p className="font-bold text-[#5A5A40]">
-                                  {p.price.toLocaleString('vi-VN')} đ
+                                  {(Number(p.price) || 0).toLocaleString('vi-VN')} đ
                                 </p>
-                                {p.originalPrice && (
+                                {p.originalPrice ? (
                                   <p className="text-[11px] text-[#8C877E] line-through">
-                                    {p.originalPrice.toLocaleString('vi-VN')} đ
+                                    {(Number(p.originalPrice) || 0).toLocaleString('vi-VN')} đ
                                   </p>
-                                )}
+                                ) : null}
                               </td>
                               <td className="py-3 px-4">
                                 <button
