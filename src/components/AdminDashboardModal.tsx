@@ -5,8 +5,12 @@ import {
   Plus,
   Trash2,
   CheckCircle,
+  CheckCircle2,
   TrendingUp,
   Users,
+  User,
+  Phone,
+  Clock,
   Search,
   Tag,
   MapPin,
@@ -27,9 +31,11 @@ import {
   Globe,
   Save,
   Sparkles,
+  AlertCircle,
+  Filter,
 } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus } from '../types/auth';
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -46,6 +52,9 @@ interface AdminDashboardModalProps {
   onSaveFooterConfig?: (config: FooterConfig) => void;
   headerConfig?: HeaderConfig;
   onSaveHeaderConfig?: (config: HeaderConfig) => void;
+  orders?: Order[];
+  onUpdateOrderStatus?: (orderId: string, status: OrderStatus, notes?: string) => Promise<void> | void;
+  onDeleteOrder?: (orderId: string) => Promise<void> | void;
 }
 
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
@@ -63,10 +72,15 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onSaveFooterConfig,
   headerConfig,
   onSaveHeaderConfig,
+  orders = [],
+  onUpdateOrderStatus,
+  onDeleteOrder,
 }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'header' | 'footer'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'orders' | 'header' | 'footer'>('stats');
   const [productSubMode, setProductSubMode] = useState<'list' | 'form'>('list');
   const [searchFilter, setSearchFilter] = useState('');
+  const [orderSearchFilter, setOrderSearchFilter] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const [headerForm, setHeaderForm] = useState<HeaderConfig>(() => ({
@@ -494,6 +508,23 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
           >
             <Package className="w-4 h-4" />
             <span>Sản Phẩm ({totalProducts})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`flex-1 py-3.5 flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer relative ${
+              activeTab === 'orders'
+                ? 'border-[#8B4513] text-[#8B4513] bg-[#FDFBF7] font-bold'
+                : 'border-transparent text-[#6B665E] hover:text-[#2D2926]'
+            }`}
+          >
+            <ShoppingBag className="w-4 h-4 text-[#8B4513]" />
+            <span>Đơn Hàng ({safeOrders.length})</span>
+            {newOrdersCount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                {newOrdersCount} mới
+              </span>
+            )}
           </button>
 
           <button
@@ -1036,6 +1067,256 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div className="space-y-6">
+              {/* Filter and Overview header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#EAE7E2]">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-[#8C877E] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Tìm tên khách hàng, SĐT, địa chỉ, mã đơn hàng..."
+                    value={orderSearchFilter}
+                    onChange={(e) => setOrderSearchFilter(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 text-xs border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+                  <Filter className="w-4 h-4 text-[#8B4513] shrink-0" />
+                  <span className="text-xs font-bold text-[#6B665E] shrink-0">Lọc:</span>
+                  {[
+                    { id: 'all', label: `Tất cả (${safeOrders.length})` },
+                    { id: 'Mới tiếp nhận', label: `🟡 Mới (${safeOrders.filter((o) => o.status === 'Mới tiếp nhận').length})` },
+                    { id: 'Đang xử lý', label: '🔵 Đang xử lý' },
+                    { id: 'Đang giao hàng', label: '🟣 Đang giao' },
+                    { id: 'Đã hoàn thành', label: '🟢 Hoàn thành' },
+                    { id: 'Đã hủy', label: '🔴 Đã hủy' },
+                  ].map((filterItem) => (
+                    <button
+                      key={filterItem.id}
+                      type="button"
+                      onClick={() => setOrderStatusFilter(filterItem.id)}
+                      className={`text-xs px-3 py-1.5 rounded-full font-bold transition-colors shrink-0 cursor-pointer ${
+                        orderStatusFilter === filterItem.id
+                          ? 'bg-[#8B4513] text-white shadow-xs'
+                          : 'bg-[#F0EDE9] text-[#6B665E] hover:bg-[#EAE7E2]'
+                      }`}
+                    >
+                      {filterItem.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* List of Orders */}
+              {filteredOrders.length === 0 ? (
+                <div className="bg-white p-12 rounded-3xl border border-[#EAE7E2] text-center space-y-3">
+                  <div className="w-16 h-16 bg-[#F0EDE9] rounded-full flex items-center justify-center mx-auto text-3xl">
+                    📦
+                  </div>
+                  <h4 className="font-serif-vi font-bold text-base text-[#2D2926]">
+                    Không Tìm Thấy Đơn Hàng Nào
+                  </h4>
+                  <p className="text-xs text-[#6B665E] max-w-md mx-auto">
+                    {orderSearchFilter || orderStatusFilter !== 'all'
+                      ? 'Không có đơn hàng nào phù hợp với bộ lọc tìm kiếm hiện tại.'
+                      : 'Chưa có đơn hàng nào từ khách hàng trên hệ thống Firestore Cloud. Khi khách đặt hàng qua giỏ hàng, thông tin sẽ tự động xuất hiện tại đây theo thời gian thực!'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredOrders.map((order) => {
+                    const orderDateStr = order.createdAt
+                      ? new Date(order.createdAt).toLocaleString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'Gần đây';
+
+                    return (
+                      <div
+                        key={order.id}
+                        className={`bg-white rounded-3xl border overflow-hidden transition-all shadow-sm ${
+                          order.status === 'Mới tiếp nhận'
+                            ? 'border-amber-400 ring-2 ring-amber-400/20'
+                            : 'border-[#EAE7E2]'
+                        }`}
+                      >
+                        {/* Order Header Bar */}
+                        <div className="p-4 bg-[#FDFBF7] border-b border-[#EAE7E2] flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-sm bg-[#8B4513] text-white px-3 py-1 rounded-full shadow-2xs">
+                              #{order.id}
+                            </span>
+                            <span className="text-xs text-[#6B665E] flex items-center gap-1 font-medium">
+                              <Clock className="w-3.5 h-3.5 text-[#8C877E]" />
+                              {orderDateStr}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-[#6B665E] hidden sm:inline">Trạng thái:</span>
+                            <select
+                              value={order.status}
+                              onChange={async (e) => {
+                                const newStatus = e.target.value as OrderStatus;
+                                if (onUpdateOrderStatus) {
+                                  await onUpdateOrderStatus(order.id, newStatus);
+                                  setStatusMessage({
+                                    text: `Đã cập nhật đơn hàng #${order.id} sang trạng thái "${newStatus}"!`,
+                                    type: 'success',
+                                  });
+                                }
+                              }}
+                              className={`text-xs font-bold px-3 py-1.5 rounded-full border focus:outline-none cursor-pointer transition-all ${
+                                order.status === 'Mới tiếp nhận'
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : order.status === 'Đang xử lý'
+                                  ? 'bg-blue-100 text-blue-900 border-blue-300'
+                                  : order.status === 'Đang giao hàng'
+                                  ? 'bg-purple-100 text-purple-900 border-purple-300'
+                                  : order.status === 'Đã hoàn thành'
+                                  ? 'bg-green-100 text-green-900 border-green-300'
+                                  : 'bg-red-100 text-red-900 border-red-300'
+                              }`}
+                            >
+                              <option value="Mới tiếp nhận">🟡 Mới tiếp nhận</option>
+                              <option value="Đang xử lý">🔵 Đang xử lý</option>
+                              <option value="Đang giao hàng">🟣 Đang giao hàng</option>
+                              <option value="Đã hoàn thành">🟢 Đã hoàn thành</option>
+                              <option value="Đã hủy">🔴 Đã hủy</option>
+                            </select>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm(`Bạn có chắc chắn muốn xóa hẳn đơn hàng #${order.id}?`)) {
+                                  if (onDeleteOrder) {
+                                    await onDeleteOrder(order.id);
+                                    setStatusMessage({ text: `Đã xóa đơn hàng #${order.id}!`, type: 'success' });
+                                  }
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                              title="Xóa đơn hàng này"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Customer Info Card */}
+                        <div className="p-4 sm:p-5 space-y-4">
+                          <div className="bg-[#F8F6F2] p-4 rounded-2xl border border-[#EAE7E2] grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                            <div className="space-y-1">
+                              <span className="text-[#8C877E] font-semibold block text-[11px] uppercase tracking-wider">
+                                Khách Hàng đặt
+                              </span>
+                              <div className="font-bold text-[#2D2926] text-sm flex items-center gap-2">
+                                <User className="w-4 h-4 text-[#8B4513] shrink-0" />
+                                <span>{order.customerName}</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <span className="text-[#8C877E] font-semibold block text-[11px] uppercase tracking-wider">
+                                Số Điện Thoại
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-[#5A5A40] text-sm flex items-center gap-1.5 font-mono">
+                                  <Phone className="w-4 h-4 text-[#5A5A40] shrink-0" />
+                                  {order.customerPhone}
+                                </span>
+                                <a
+                                  href={`tel:${order.customerPhone}`}
+                                  className="text-[10px] bg-[#5A5A40] text-white font-bold px-2.5 py-1 rounded-md hover:bg-[#4A4A35] transition-colors shadow-2xs"
+                                >
+                                  Gọi ngay
+                                </a>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1 sm:col-span-1">
+                              <span className="text-[#8C877E] font-semibold block text-[11px] uppercase tracking-wider">
+                                Địa Chỉ Giao Hàng
+                              </span>
+                              <div className="font-medium text-[#2D2926] flex items-start gap-1.5 leading-relaxed">
+                                <MapPin className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                <span>{order.customerAddress}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Order Products List */}
+                          <div className="border border-[#EAE7E2] rounded-2xl overflow-hidden divide-y divide-[#EAE7E2]">
+                            <div className="bg-[#FDFBF7] px-4 py-2 text-[11px] font-bold text-[#6B665E] uppercase tracking-wider flex justify-between">
+                              <span>Sản phẩm ({order.items?.length || 0})</span>
+                              <span>Thành tiền</span>
+                            </div>
+
+                            {(order.items || []).map((item, idx) => (
+                              <div key={idx} className="p-3 flex items-center justify-between gap-3 text-xs hover:bg-[#FDFBF7]">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <img
+                                    src={item.productImage || 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&q=80&w=800'}
+                                    alt={item.productName}
+                                    className="w-12 h-12 rounded-xl object-cover border border-[#EAE7E2] shrink-0"
+                                  />
+                                  <div className="min-w-0">
+                                    {item.village && (
+                                      <span className="text-[10px] font-bold text-[#8B4513] bg-[#8B4513]/10 px-2 py-0.5 rounded-full">
+                                        {item.village}
+                                      </span>
+                                    )}
+                                    <p className="font-bold text-[#2D2926] truncate mt-0.5">
+                                      {item.productName}
+                                    </p>
+                                    <p className="text-[11px] text-[#6B665E]">
+                                      {item.price.toLocaleString('vi-VN')} đ × <b className="text-[#2D2926]">x{item.quantity}</b>
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="text-right font-bold text-[#5A5A40] text-xs shrink-0">
+                                  {(item.price * item.quantity).toLocaleString('vi-VN')} đ
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Order Total Footer Summary */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs border-t border-[#EAE7E2]">
+                            <div className="flex items-center gap-3 text-[#6B665E]">
+                              {order.promoCode && (
+                                <span className="bg-[#5A5A40]/10 text-[#5A5A40] px-2.5 py-1 rounded-full font-bold">
+                                  Mã giảm: <b>{order.promoCode}</b> (-{(order.discount || 0).toLocaleString('vi-VN')}đ)
+                                </span>
+                              )}
+                              <span>
+                                Phí vận chuyển: <b>{order.shippingFee === 0 ? 'Miễn phí' : `${(order.shippingFee || 0).toLocaleString('vi-VN')}đ`}</b>
+                              </span>
+                            </div>
+
+                            <div className="text-right">
+                              <span className="text-[#6B665E] font-medium mr-2">Tổng tiền thanh toán (COD):</span>
+                              <span className="text-base font-bold text-[#8B4513] font-mono">
+                                {(order.total || 0).toLocaleString('vi-VN')} đ
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
