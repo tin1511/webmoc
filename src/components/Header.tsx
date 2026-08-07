@@ -1,6 +1,6 @@
 import React from 'react';
 import { Search, ShoppingBag, Heart, Sparkles, User, LogOut, ShieldCheck, PlusCircle } from 'lucide-react';
-import { UserAccount } from '../types/auth';
+import { UserAccount, HeaderConfig, DEFAULT_HEADER_CONFIG } from '../types/auth';
 
 interface HeaderProps {
   searchQuery: string;
@@ -18,6 +18,7 @@ interface HeaderProps {
   onOpenAdminDashboard: () => void;
   onOpenSecurity?: () => void;
   onLogout: () => void;
+  headerConfig?: HeaderConfig;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,15 +35,17 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdminDashboard,
   onOpenSecurity,
   onLogout,
+  headerConfig,
 }) => {
+  const cfg = { ...DEFAULT_HEADER_CONFIG, ...headerConfig };
 
   return (
     <header className="sticky top-0 z-40 bg-[#FDFBF7]/95 backdrop-blur-md border-b border-[#EAE7E2] transition-all">
       {/* Top Banner announcing freeship & promo */}
       <div className="bg-[#5A5A40] text-[#FDFBF7] text-xs py-1.5 px-4 text-center font-medium tracking-wide flex items-center justify-center gap-2">
-        <Sparkles className="w-3.5 h-3.5 text-[#EAE7E2]" />
+        <Sparkles className="w-3.5 h-3.5 text-[#EAE7E2] shrink-0" />
         <span>
-          Miễn phí khắc tên & thiết kế demo theo yêu cầu • Nhập mã <b>MOCGO10</b> giảm ngay 10%
+          {cfg.announcementText}
         </span>
       </div>
 
@@ -58,9 +61,10 @@ export const Header: React.FC<HeaderProps> = ({
             className="group flex flex-col items-start cursor-pointer select-none"
           >
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#5A5A40] font-serif-vi">
-              MỘC
+              {cfg.brandTitle}
             </h1>
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#8B4513] -mt-1 group-hover:text-[#5A5A40] transition-colors">
+              {cfg.brandTagline}
             </span>
           </a>
 
@@ -72,6 +76,14 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               Sản Phẩm
+            </button>
+            <button
+              onClick={() => onNavigate('artisans')}
+              className={`transition-colors hover:text-[#5A5A40] ${
+                activeSection === 'artisans' ? 'text-[#5A5A40] font-bold border-b-2 border-[#5A5A40] pb-1' : ''
+              }`}
+            >
+              Nghệ Nhân
             </button>
             <button
               onClick={() => onNavigate('about')}
@@ -91,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Search className="w-4 h-4 text-[#8C877E] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Tìm kiếm tinh hoa..."
+              placeholder={cfg.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-36 sm:w-48 lg:w-56 h-10 border border-[#DEDAD2] bg-white/70 rounded-full pl-10 pr-4 text-xs font-medium text-[#2D2926] placeholder-[#8C877E] focus:outline-none focus:border-[#5A5A40] focus:ring-1 focus:ring-[#5A5A40] transition-all"
