@@ -270,3 +270,64 @@ export async function saveHeaderConfigToFirestore(config: HeaderConfig): Promise
   await setDoc(doc(db, SETTINGS_COLLECTION, 'header'), cleanConfig, { merge: true });
 }
 
+/**
+ * Subscribe to Craft Videos list from Firestore
+ */
+export function subscribeToCraftVideos(
+  onUpdate: (videos: any[]) => void,
+  defaultVideos: any[]
+) {
+  const docRef = doc(db, SETTINGS_COLLECTION, 'craft_videos');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          onUpdate(data.items);
+          return;
+        }
+      }
+      onUpdate(defaultVideos);
+    },
+    (err) => {
+      console.error('Firestore craft videos listener error:', err);
+      onUpdate(defaultVideos);
+    }
+  );
+}
+
+/**
+ * Save Craft Videos list to Firestore
+ */
+export async function saveCraftVideosToFirestore(videos: any[]): Promise<void> {
+  // Sanitize video items to avoid huge base64 strings breaking Firestore 1MB doc limit
+  const sanitized = videos.map((v) => {
+    let finalVideoUrl = v.videoUrl || '';
+    let finalThumbUrl = v.thumbnailUrl || '';
+
+    // If videoUrl is base64 and > 600KB, fallback to default sample video URL if needed to preserve Firestore doc
+    if (finalVideoUrl.startsWith('data:') && finalVideoUrl.length > 800000) {
+      console.warn('Video Data URL is too large for single Firestore doc, using fallback sample MP4 URL');
+      finalVideoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-carpenter-working-with-wood-41618-large.mp4';
+    }
+
+    if (finalThumbUrl.startsWith('data:') && finalThumbUrl.length > 800000) {
+      finalThumbUrl = 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80';
+    }
+
+    return {
+      id: String(v.id || 'vid-' + Date.now()),
+      title: String(v.title || ''),
+      description: String(v.description || ''),
+      videoUrl: finalVideoUrl,
+      thumbnailUrl: finalThumbUrl,
+      duration: String(v.duration || '01:30'),
+      tag: String(v.tag || 'Chế Tác Gỗ'),
+    };
+  });
+
+  const cleanData = cleanForFirestore({ items: sanitized });
+  await setDoc(doc(db, SETTINGS_COLLECTION, 'craft_videos'), cleanData, { merge: true });
+}
+
