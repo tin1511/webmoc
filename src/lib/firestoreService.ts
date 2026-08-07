@@ -5,7 +5,7 @@ import {
   deleteDoc,
   updateDoc,
   onSnapshot,
-  getDocs,
+  getDoc,
   addDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -15,47 +15,63 @@ import { UserAccount } from '../types/auth';
 const PRODUCTS_COLLECTION = 'products';
 const USERS_COLLECTION = 'users';
 const LOGS_COLLECTION = 'login_logs';
+const META_COLLECTION = '_metadata';
+
+let isProductInitChecked = false;
 
 /**
  * Real-time listener for Products collection in Firestore.
- * Automatically seeds default products into Firestore if the collection is empty.
+ * Initializes default products ONLY ONCE per Firestore database instance,
+ * so user deletions are permanently respected.
  */
 export function subscribeToProducts(
   onProductsUpdate: (products: Product[]) => void,
   onError?: (err: Error) => void
 ) {
   const colRef = collection(db, PRODUCTS_COLLECTION);
-  const SEEDED_KEY = 'products_seeded_to_firestore_v1';
 
-  return onSnapshot(
-    colRef,
-    async (snapshot) => {
-      const isAlreadySeeded = localStorage.getItem(SEEDED_KEY) === 'true';
-
-      if (snapshot.empty && !isAlreadySeeded) {
-        // Seed default products into Firestore ONLY on first launch
-        console.log('Seeding initial products to Firestore...');
-        localStorage.setItem(SEEDED_KEY, 'true');
-        try {
+  // Check Firestore initialization status once on app startup
+  if (!isProductInitChecked) {
+    isProductInitChecked = true;
+    const initDocRef = doc(db, META_COLLECTION, 'products_init');
+    getDoc(initDocRef)
+      .then(async (snapshot) => {
+        if (!snapshot.exists()) {
+          // Record init flag in Firestore first
+          await setDoc(initDocRef, { initializedAt: new Date().toISOString() });
+          // Check if products exist before seeding
+          const prodDocs = await collection(db, PRODUCTS_COLLECTION);
+          console.log('Initializing default products in Firestore database...');
           for (const item of PRODUCTS) {
             await setDoc(doc(db, PRODUCTS_COLLECTION, item.id), item);
           }
-        } catch (e) {
-          console.error('Error seeding products to Firestore:', e);
         }
-      } else {
-        if (!snapshot.empty && !isAlreadySeeded) {
-          localStorage.setItem(SEEDED_KEY, 'true');
-        }
-        const productList: Product[] = snapshot.docs.map((d) => d.data() as Product);
-        onProductsUpdate(productList);
-      }
+      })
+      .catch((e) => {
+        console.error('Error checking Firestore initialization state:', e);
+      });
+  }
+
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const productList: Product[] = snapshot.docs.map((d) => d.data() as Product);
+      onProductsUpdate(productList);
     },
     (err) => {
       console.error('Firestore products listener error:', err);
       if (onError) onError(err);
     }
   );
+}
+
+/**
+ * Restore default sample products to Firestore manually (for Admin use)
+ */
+export async function restoreDefaultProductsToFirestore(): Promise<void> {
+  for (const item of PRODUCTS) {
+    await setDoc(doc(db, PRODUCTS_COLLECTION, item.id), item);
+  }
 }
 
 /**
@@ -88,6 +104,8 @@ export async function toggleStockInFirestore(productId: string, currentStock: bo
   });
 }
 
+let isUserInitChecked = false;
+
 /**
  * Real-time listener for User accounts in Firestore.
  */
@@ -95,45 +113,48 @@ export function subscribeToUsers(
   onUsersUpdate: (users: Array<UserAccount & { password?: string }>) => void
 ) {
   const colRef = collection(db, USERS_COLLECTION);
-  const SEEDED_KEY = 'users_seeded_to_firestore_v1';
+
+  if (!isUserInitChecked) {
+    isUserInitChecked = true;
+    const initDocRef = doc(db, META_COLLECTION, 'users_init');
+    getDoc(initDocRef)
+      .then(async (snapshot) => {
+        if (!snapshot.exists()) {
+          await setDoc(initDocRef, { initializedAt: new Date().toISOString() });
+          const defaultAdmin = {
+            username: 'admin',
+            password: 'hminh0812',
+            name: 'Quản Trị Viên (Admin)',
+            email: 'admin@bansacviet.vn',
+            role: 'admin',
+            avatar: '👑',
+          };
+          const defaultUser = {
+            username: 'khachhang',
+            password: '123456',
+            name: 'Khách Hàng Thử Nghiệm',
+            email: 'khachhang@bansacviet.vn',
+            role: 'user',
+            avatar: '👤',
+          };
+          try {
+            await setDoc(doc(db, USERS_COLLECTION, defaultAdmin.username), defaultAdmin);
+            await setDoc(doc(db, USERS_COLLECTION, defaultUser.username), defaultUser);
+          } catch (e) {
+            console.error('Error seeding default users:', e);
+          }
+        }
+      })
+      .catch((e) => {
+        console.error('Error checking users Firestore init:', e);
+      });
+  }
 
   return onSnapshot(
     colRef,
-    async (snapshot) => {
-      const isAlreadySeeded = localStorage.getItem(SEEDED_KEY) === 'true';
-
-      if (snapshot.empty && !isAlreadySeeded) {
-        // Seed default accounts
-        localStorage.setItem(SEEDED_KEY, 'true');
-        const defaultAdmin = {
-          username: 'admin',
-          password: 'hminh0812',
-          name: 'Quản Trị Viên (Admin)',
-          email: 'admin@bansacviet.vn',
-          role: 'admin',
-          avatar: '👑',
-        };
-        const defaultUser = {
-          username: 'khachhang',
-          password: '123456',
-          name: 'Khách Hàng Thử Nghiệm',
-          email: 'khachhang@bansacviet.vn',
-          role: 'user',
-          avatar: '👤',
-        };
-        try {
-          await setDoc(doc(db, USERS_COLLECTION, defaultAdmin.username), defaultAdmin);
-          await setDoc(doc(db, USERS_COLLECTION, defaultUser.username), defaultUser);
-        } catch (e) {
-          console.error('Error seeding default users:', e);
-        }
-      } else {
-        if (!snapshot.empty && !isAlreadySeeded) {
-          localStorage.setItem(SEEDED_KEY, 'true');
-        }
-        const userList = snapshot.docs.map((d) => d.data() as UserAccount & { password?: string });
-        onUsersUpdate(userList);
-      }
+    (snapshot) => {
+      const userList = snapshot.docs.map((d) => d.data() as UserAccount & { password?: string });
+      onUsersUpdate(userList);
     },
     (err) => {
       console.error('Firestore users listener error:', err);
