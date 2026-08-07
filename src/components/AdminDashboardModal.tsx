@@ -28,7 +28,7 @@ import {
   Save,
 } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from '../types/auth';
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -43,6 +43,8 @@ interface AdminDashboardModalProps {
   onToggleStock: (id: string) => void;
   footerConfig?: FooterConfig;
   onSaveFooterConfig?: (config: FooterConfig) => void;
+  headerConfig?: HeaderConfig;
+  onSaveHeaderConfig?: (config: HeaderConfig) => void;
 }
 
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
@@ -58,11 +60,24 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onToggleStock,
   footerConfig,
   onSaveFooterConfig,
+  headerConfig,
+  onSaveHeaderConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'footer'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'header' | 'footer'>('stats');
   const [productSubMode, setProductSubMode] = useState<'list' | 'form'>('list');
   const [searchFilter, setSearchFilter] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const [headerForm, setHeaderForm] = useState<HeaderConfig>(() => ({
+    ...DEFAULT_HEADER_CONFIG,
+    ...headerConfig,
+  }));
+
+  React.useEffect(() => {
+    if (headerConfig) {
+      setHeaderForm({ ...DEFAULT_HEADER_CONFIG, ...headerConfig });
+    }
+  }, [headerConfig]);
 
   const [footerForm, setFooterForm] = useState<FooterConfig>(() => ({
     ...DEFAULT_FOOTER_CONFIG,
@@ -474,7 +489,19 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>Quản Lý Sản Phẩm ({totalProducts})</span>
+            <span>Sản Phẩm ({totalProducts})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('header')}
+            className={`flex-1 py-3.5 flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer ${
+              activeTab === 'header'
+                ? 'border-[#5A5A40] text-[#5A5A40] bg-[#FDFBF7] font-bold'
+                : 'border-transparent text-[#6B665E] hover:text-[#2D2926]'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-[#5A5A40]" />
+            <span>Đầu Trang (Header)</span>
           </button>
 
           <button
@@ -1005,6 +1032,125 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'header' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between bg-[#F5F5F0] p-4 rounded-2xl border border-[#EAE7E2]">
+                <div>
+                  <h4 className="font-serif-vi font-bold text-base text-[#2D2926] flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-[#5A5A40]" />
+                    Cấu Hình Nội Dung Đầu Trang (Header)
+                  </h4>
+                  <p className="text-xs text-[#6B665E] mt-0.5">
+                    Tùy chỉnh thanh thông báo ưu đãi dòng đầu, tên thương hiệu chính, khẩu hiệu và thanh tìm kiếm
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#8B4513] bg-[#8B4513]/10 px-3 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+                  <ShieldCheck className="w-4 h-4" /> Quyền Admin
+                </span>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (onSaveHeaderConfig) {
+                    onSaveHeaderConfig(headerForm);
+                  }
+                  setStatusMessage({
+                    text: 'Đã lưu và cập nhật nội dung Đầu Trang (Header) lên Cloud thành công!',
+                    type: 'success',
+                  });
+                }}
+                className="space-y-6 bg-white p-6 rounded-3xl border border-[#EAE7E2] shadow-2xs"
+              >
+                {/* Announcement Bar */}
+                <div className="space-y-3 border-b border-[#EAE7E2] pb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#5A5A40]">
+                    1. Thanh Thông Báo Khuyến Mãi / Ưu Đãi (Dòng Đầu Tiên)
+                  </h5>
+                  <div>
+                    <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                      Nội Dung Dòng Thông Báo Băng Rôn Trên Cùng
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={headerForm.announcementText}
+                      onChange={(e) => setHeaderForm({ ...headerForm, announcementText: e.target.value })}
+                      className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#5A5A40]"
+                      placeholder="VD: Miễn phí khắc tên & thiết kế demo theo yêu cầu • Nhập mã MOCGO10 giảm 10%"
+                      required
+                    />
+                    <p className="text-[10px] text-[#8C877E] mt-1">
+                      Hiển thị trực tiếp ở dải băng rôn màu xanh olive trên cùng của website.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Brand Name & Subtitle */}
+                <div className="space-y-4 border-b border-[#EAE7E2] pb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#5A5A40]">
+                    2. Logo Thương Hiệu & Dòng Khẩu Hiệu
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Tên Thương Hiệu Chính
+                      </label>
+                      <input
+                        type="text"
+                        value={headerForm.brandTitle}
+                        onChange={(e) => setHeaderForm({ ...headerForm, brandTitle: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#5A5A40]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                        Slogan / Khẩu Hiệu
+                      </label>
+                      <input
+                        type="text"
+                        value={headerForm.brandTagline}
+                        onChange={(e) => setHeaderForm({ ...headerForm, brandTagline: e.target.value })}
+                        className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#5A5A40]"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search Box Placeholder */}
+                <div className="space-y-3">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#5A5A40]">
+                    3. Ô Tìm Kiếm
+                  </h5>
+                  <div>
+                    <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                      Gợi Ý Trong Ô Tìm Kiếm (Placeholder)
+                    </label>
+                    <input
+                      type="text"
+                      value={headerForm.searchPlaceholder}
+                      onChange={(e) => setHeaderForm({ ...headerForm, searchPlaceholder: e.target.value })}
+                      className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#5A5A40]"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="submit"
+                    className="bg-[#5A5A40] hover:bg-[#4A4A35] text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Lưu Cấu Hình Đầu Trang (Cloud)</span>
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
