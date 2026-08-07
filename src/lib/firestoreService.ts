@@ -25,13 +25,17 @@ export function subscribeToProducts(
   onError?: (err: Error) => void
 ) {
   const colRef = collection(db, PRODUCTS_COLLECTION);
+  const SEEDED_KEY = 'products_seeded_to_firestore_v1';
 
   return onSnapshot(
     colRef,
     async (snapshot) => {
-      if (snapshot.empty) {
-        // Seed default products into Firestore
+      const isAlreadySeeded = localStorage.getItem(SEEDED_KEY) === 'true';
+
+      if (snapshot.empty && !isAlreadySeeded) {
+        // Seed default products into Firestore ONLY on first launch
         console.log('Seeding initial products to Firestore...');
+        localStorage.setItem(SEEDED_KEY, 'true');
         try {
           for (const item of PRODUCTS) {
             await setDoc(doc(db, PRODUCTS_COLLECTION, item.id), item);
@@ -40,6 +44,9 @@ export function subscribeToProducts(
           console.error('Error seeding products to Firestore:', e);
         }
       } else {
+        if (!snapshot.empty && !isAlreadySeeded) {
+          localStorage.setItem(SEEDED_KEY, 'true');
+        }
         const productList: Product[] = snapshot.docs.map((d) => d.data() as Product);
         onProductsUpdate(productList);
       }
@@ -88,12 +95,16 @@ export function subscribeToUsers(
   onUsersUpdate: (users: Array<UserAccount & { password?: string }>) => void
 ) {
   const colRef = collection(db, USERS_COLLECTION);
+  const SEEDED_KEY = 'users_seeded_to_firestore_v1';
 
   return onSnapshot(
     colRef,
     async (snapshot) => {
-      if (snapshot.empty) {
+      const isAlreadySeeded = localStorage.getItem(SEEDED_KEY) === 'true';
+
+      if (snapshot.empty && !isAlreadySeeded) {
         // Seed default accounts
+        localStorage.setItem(SEEDED_KEY, 'true');
         const defaultAdmin = {
           username: 'admin',
           password: 'hminh0812',
@@ -117,6 +128,9 @@ export function subscribeToUsers(
           console.error('Error seeding default users:', e);
         }
       } else {
+        if (!snapshot.empty && !isAlreadySeeded) {
+          localStorage.setItem(SEEDED_KEY, 'true');
+        }
         const userList = snapshot.docs.map((d) => d.data() as UserAccount & { password?: string });
         onUsersUpdate(userList);
       }
