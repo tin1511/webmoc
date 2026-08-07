@@ -64,6 +64,22 @@
         "device": { "type": "string" }
       },
       "required": ["id", "username", "timestamp", "status"]
+    },
+    "orders": {
+      "title": "Orders",
+      "description": "Customer purchase orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerAddress": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "customerName", "customerPhone", "customerAddress", "total", "status", "createdAt"]
     }
   }
 }
