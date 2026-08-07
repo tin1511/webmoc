@@ -45,10 +45,16 @@ const LOCAL_STORAGE_KEY = 'mocdieu_craft_videos';
 
 interface CraftVideoSectionProps {
   isAdmin?: boolean;
+  craftVideos?: VideoItem[];
+  onSaveVideos?: (videos: VideoItem[]) => Promise<void> | void;
 }
 
-export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({ isAdmin = false }) => {
-  const [videos, setVideos] = useState<VideoItem[]>(() => {
+export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({
+  isAdmin = false,
+  craftVideos,
+  onSaveVideos,
+}) => {
+  const [internalVideos, setInternalVideos] = useState<VideoItem[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
@@ -60,6 +66,8 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({ isAdmin = 
     }
     return INITIAL_CRAFT_VIDEOS;
   });
+
+  const videos = craftVideos && craftVideos.length > 0 ? craftVideos : internalVideos;
 
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -77,14 +85,17 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({ isAdmin = 
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
-  // Save to localStorage when videos change
-  useEffect(() => {
+  const updateVideos = (newVideos: VideoItem[]) => {
+    setInternalVideos(newVideos);
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(videos));
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newVideos));
     } catch (err) {
       console.error('Failed to save videos to localStorage', err);
     }
-  }, [videos]);
+    if (onSaveVideos) {
+      onSaveVideos(newVideos);
+    }
+  };
 
   // Handle Video File Upload from computer
   const handleVideoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,7 +184,7 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({ isAdmin = 
       duration: duration.trim() || '01:30',
     };
 
-    setVideos([newVideo, ...videos]);
+    updateVideos([newVideo, ...videos]);
     setIsAddModalOpen(false);
     resetForm();
   };
@@ -192,7 +203,7 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({ isAdmin = 
 
   // Delete Video
   const handleDeleteVideo = (video: VideoItem) => {
-    setVideos(videos.filter((v) => v.id !== video.id));
+    updateVideos(videos.filter((v) => v.id !== video.id));
     if (activeVideo?.id === video.id) {
       setActiveVideo(null);
     }
@@ -202,7 +213,7 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({ isAdmin = 
   // Reset to default sample videos
   const handleResetDefaultVideos = () => {
     if (window.confirm('Bạn có chắc muốn khôi phục lại danh sách video mặc định ban đầu?')) {
-      setVideos(INITIAL_CRAFT_VIDEOS);
+      updateVideos(INITIAL_CRAFT_VIDEOS);
     }
   };
 
