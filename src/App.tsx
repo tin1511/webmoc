@@ -17,7 +17,7 @@ import { SecurityModal } from './components/SecurityModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { PRODUCTS, Product } from './data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from './types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus } from './types/auth';
 import { Filter, Sparkles, Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   subscribeToProducts,
@@ -29,6 +29,9 @@ import {
   saveFooterConfigToFirestore,
   subscribeToHeaderConfig,
   saveHeaderConfigToFirestore,
+  subscribeToOrders,
+  updateOrderStatusInFirestore,
+  deleteOrderFromFirestore,
 } from './lib/firestoreService';
 
 export default function App() {
@@ -39,6 +42,9 @@ export default function App() {
   // Header & Footer config states synced with Firestore cloud database
   const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [footerConfig, setFooterConfig] = useState<FooterConfig>(DEFAULT_FOOTER_CONFIG);
+
+  // Orders state synced with Firestore cloud database
+  const [orders, setOrders] = useState<Order[]>([]);
 
   // Subscribe to real-time Firestore products collection
   useEffect(() => {
@@ -64,6 +70,24 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Subscribe to real-time Firestore orders collection
+  useEffect(() => {
+    const unsubscribe = subscribeToOrders((updatedOrders) => {
+      setOrders(updatedOrders);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus, notes?: string) => {
+    await updateOrderStatusInFirestore(orderId, status, notes);
+    showToast(`✨ Đã cập nhật trạng thái đơn hàng #${orderId} sang "${status}"`);
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    await deleteOrderFromFirestore(orderId);
+    showToast(`🗑️ Đã xóa đơn hàng #${orderId}`);
+  };
 
   const handleSaveHeaderConfig = async (config: HeaderConfig) => {
     setHeaderConfig(config);
@@ -497,6 +521,9 @@ export default function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
+        onPlaceOrder={() => {
+          showToast('🎉 Đơn hàng đã được khởi tạo và gửi tới Quản Trị Viên!');
+        }}
       />
 
       <WishlistModal
@@ -529,6 +556,9 @@ export default function App() {
         onSaveFooterConfig={handleSaveFooterConfig}
         headerConfig={headerConfig}
         onSaveHeaderConfig={handleSaveHeaderConfig}
+        orders={orders}
+        onUpdateOrderStatus={handleUpdateOrderStatus}
+        onDeleteOrder={handleDeleteOrder}
       />
 
 
