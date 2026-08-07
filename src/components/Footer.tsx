@@ -89,35 +89,6 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSecurity, footerConfig }) 
             </div>
           </div>
 
-          {/* Col 2: Làng nghề nổi bật */}
-          <div className="lg:col-span-3 space-y-3">
-            <h5 className="text-sm font-bold uppercase tracking-widest text-[#EAE7E2]">
-              Làng Nghề Mộc
-            </h5>
-            <ul className="space-y-2 text-xs text-[#8C877E]">
-              <li>
-                <a href="#stories-section" className="hover:text-white transition-colors">
-                  Làng Mộc Kim Bồng (Quảng Nam)
-                </a>
-              </li>
-              <li>
-                <a href="#stories-section" className="hover:text-white transition-colors">
-                  Làng Mộc Đồng Kỵ (Bắc Ninh)
-                </a>
-              </li>
-              <li>
-                <a href="#stories-section" className="hover:text-white transition-colors">
-                  Làng Mộc Chàng Sơn (Hà Nội)
-                </a>
-              </li>
-              <li>
-                <a href="#stories-section" className="hover:text-white transition-colors">
-                  Làng Mộc La Xuyên (Nam Định)
-                </a>
-              </li>
-            </ul>
-          </div>
-
           {/* Col 3: Hỗ trợ khách hàng */}
           <div className="lg:col-span-2 space-y-3">
             <h5 className="text-sm font-bold uppercase tracking-widest text-[#EAE7E2]">
