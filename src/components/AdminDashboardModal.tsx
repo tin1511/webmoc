@@ -156,7 +156,52 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     setProductSubMode('form');
   };
 
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImageFile = (
+    file: File,
+    maxWidth = 800,
+    maxHeight = 800,
+    quality = 0.75
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(event.target?.result as string);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = (err) => reject(err);
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -168,17 +213,25 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (reader.result) {
-        setImageUrl(reader.result as string);
-        setStatusMessage({
-          text: 'Đã tải ảnh lên thành công!',
-          type: 'success',
-        });
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      setStatusMessage({
+        text: 'Đang tự động nén & tối ưu hóa dung lượng ảnh...',
+        type: 'success',
+      });
+
+      const compressedBase64 = await compressImageFile(file, 800, 800, 0.75);
+      setImageUrl(compressedBase64);
+      setStatusMessage({
+        text: 'Đã tải và tối ưu dung lượng ảnh thành công (sẵn sàng lưu Cloud)!',
+        type: 'success',
+      });
+    } catch (err) {
+      console.error('Lỗi nén ảnh:', err);
+      setStatusMessage({
+        text: 'Không thể xử lý hình ảnh này. Vui lòng chọn ảnh khác hoặc dùng link URL.',
+        type: 'error',
+      });
+    }
   };
 
   const handleCreateProduct = (e: React.FormEvent) => {
@@ -186,6 +239,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     if (!name || !price) {
       setStatusMessage({
         text: 'Vui lòng điền đầy đủ tên và giá sản phẩm',
+        type: 'error',
+      });
+      return;
+    }
+
+    if (imageUrl && imageUrl.startsWith('data:') && imageUrl.length > 900000) {
+      setStatusMessage({
+        text: 'Ảnh có dung lượng quá lớn (>900KB). Vui lòng chọn ảnh khác hoặc tải lên tệp ảnh để được tự động nén.',
         type: 'error',
       });
       return;
