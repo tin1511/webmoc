@@ -58,10 +58,9 @@ export const Header: React.FC<HeaderProps> = ({
             className="group flex flex-col items-start cursor-pointer select-none"
           >
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#5A5A40] font-serif-vi">
-              MỘC ĐIÊU
+              MỘC
             </h1>
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#8B4513] -mt-1 group-hover:text-[#5A5A40] transition-colors">
-              Khắc Gỗ Laser Theo Yêu Cầu
             </span>
           </a>
 
@@ -73,14 +72,6 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               Sản Phẩm
-            </button>
-            <button
-              onClick={() => onNavigate('artisans')}
-              className={`transition-colors hover:text-[#5A5A40] ${
-                activeSection === 'artisans' ? 'text-[#5A5A40] font-bold border-b-2 border-[#5A5A40] pb-1' : ''
-              }`}
-            >
-              Nghệ Nhân
             </button>
             <button
               onClick={() => onNavigate('about')}
