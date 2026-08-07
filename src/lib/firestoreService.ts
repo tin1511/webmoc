@@ -11,7 +11,7 @@ import {
 from 'firebase/firestore';
 import { db } from './firebase';
 import { Product, PRODUCTS } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from '../types/auth';
 
 const PRODUCTS_COLLECTION = 'products';
 const USERS_COLLECTION = 'users';
@@ -236,5 +236,37 @@ export function subscribeToFooterConfig(
 export async function saveFooterConfigToFirestore(config: FooterConfig): Promise<void> {
   const cleanConfig = cleanForFirestore(config);
   await setDoc(doc(db, SETTINGS_COLLECTION, 'footer'), cleanConfig, { merge: true });
+}
+
+/**
+  * Subscribe to Header configuration settings from Firestore
+  */
+export function subscribeToHeaderConfig(
+  onHeaderUpdate: (config: HeaderConfig) => void
+) {
+  const docRef = doc(db, SETTINGS_COLLECTION, 'header');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as HeaderConfig;
+        onHeaderUpdate({ ...DEFAULT_HEADER_CONFIG, ...data });
+      } else {
+        onHeaderUpdate(DEFAULT_HEADER_CONFIG);
+      }
+    },
+    (err) => {
+      console.error('Firestore header config listener error:', err);
+      onHeaderUpdate(DEFAULT_HEADER_CONFIG);
+    }
+  );
+}
+
+/**
+  * Save updated Header configuration to Firestore
+  */
+export async function saveHeaderConfigToFirestore(config: HeaderConfig): Promise<void> {
+  const cleanConfig = cleanForFirestore(config);
+  await setDoc(doc(db, SETTINGS_COLLECTION, 'header'), cleanConfig, { merge: true });
 }
 
