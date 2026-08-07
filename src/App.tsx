@@ -19,6 +19,7 @@ import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { PRODUCTS, Product } from './data/products';
 import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from './types/auth';
+import { VideoItem, INITIAL_CRAFT_VIDEOS } from './components/CraftVideoSection';
 import { Filter, Sparkles, Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   subscribeToProducts,
@@ -30,6 +31,8 @@ import {
   saveFooterConfigToFirestore,
   subscribeToHeaderConfig,
   saveHeaderConfigToFirestore,
+  subscribeToCraftVideos,
+  saveCraftVideosToFirestore,
 } from './lib/firestoreService';
 
 export default function App() {
@@ -37,9 +40,10 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
 
-  // Header & Footer config states synced with Firestore cloud database
+  // Header, Footer & Craft Videos config states synced with Firestore cloud database
   const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [footerConfig, setFooterConfig] = useState<FooterConfig>(DEFAULT_FOOTER_CONFIG);
+  const [craftVideos, setCraftVideos] = useState<VideoItem[]>(INITIAL_CRAFT_VIDEOS);
 
   // Subscribe to real-time Firestore products collection
   useEffect(() => {
@@ -65,6 +69,20 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Subscribe to real-time Firestore craft videos list
+  useEffect(() => {
+    const unsubscribe = subscribeToCraftVideos((updatedVideos) => {
+      setCraftVideos(updatedVideos);
+    }, INITIAL_CRAFT_VIDEOS);
+    return () => unsubscribe();
+  }, []);
+
+  const handleSaveCraftVideos = async (videos: VideoItem[]) => {
+    setCraftVideos(videos);
+    await saveCraftVideosToFirestore(videos);
+    showToast('✨ Đã cập nhật danh sách Video Quy Trình Chế Tác thành công!');
+  };
 
   const handleSaveHeaderConfig = async (config: HeaderConfig) => {
     setHeaderConfig(config);
@@ -344,7 +362,11 @@ export default function App() {
         />
 
         {/* Video Craftsmanship Showcase */}
-        <CraftVideoSection isAdmin={currentUser?.role === 'admin'} />
+        <CraftVideoSection
+          isAdmin={currentUser?.role === 'admin'}
+          craftVideos={craftVideos}
+          onSaveVideos={handleSaveCraftVideos}
+        />
 
         {/* Products Section */}
         <section id="products-section" className="py-12 sm:py-16 max-w-7xl mx-auto px-4 sm:px-8">
@@ -533,6 +555,8 @@ export default function App() {
         onSaveFooterConfig={handleSaveFooterConfig}
         headerConfig={headerConfig}
         onSaveHeaderConfig={handleSaveHeaderConfig}
+        craftVideos={craftVideos}
+        onSaveCraftVideos={handleSaveCraftVideos}
       />
 
 
