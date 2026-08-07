@@ -11,12 +11,13 @@ import {
 from 'firebase/firestore';
 import { db } from './firebase';
 import { Product, PRODUCTS } from '../data/products';
-import { UserAccount } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG } from '../types/auth';
 
 const PRODUCTS_COLLECTION = 'products';
 const USERS_COLLECTION = 'users';
 const LOGS_COLLECTION = 'login_logs';
 const META_COLLECTION = '_metadata';
+const SETTINGS_COLLECTION = 'site_settings';
 
 /**
  * Remove undefined properties from an object so Firestore setDoc/updateDoc doesn't fail.
@@ -204,3 +205,36 @@ export async function recordLoginLogToFirestore(
     console.error('Error saving login log to Firestore:', e);
   }
 }
+
+/**
+  * Subscribe to Footer configuration settings from Firestore
+  */
+export function subscribeToFooterConfig(
+  onFooterUpdate: (config: FooterConfig) => void
+) {
+  const docRef = doc(db, SETTINGS_COLLECTION, 'footer');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as FooterConfig;
+        onFooterUpdate({ ...DEFAULT_FOOTER_CONFIG, ...data });
+      } else {
+        onFooterUpdate(DEFAULT_FOOTER_CONFIG);
+      }
+    },
+    (err) => {
+      console.error('Firestore footer config listener error:', err);
+      onFooterUpdate(DEFAULT_FOOTER_CONFIG);
+    }
+  );
+}
+
+/**
+  * Save updated Footer configuration to Firestore
+  */
+export async function saveFooterConfigToFirestore(config: FooterConfig): Promise<void> {
+  const cleanConfig = cleanForFirestore(config);
+  await setDoc(doc(db, SETTINGS_COLLECTION, 'footer'), cleanConfig, { merge: true });
+}
+
