@@ -11,13 +11,14 @@ import {
 from 'firebase/firestore';
 import { db } from './firebase';
 import { Product, PRODUCTS } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus } from '../types/auth';
 
 const PRODUCTS_COLLECTION = 'products';
 const USERS_COLLECTION = 'users';
 const LOGS_COLLECTION = 'login_logs';
 const META_COLLECTION = '_metadata';
 const SETTINGS_COLLECTION = 'site_settings';
+const ORDERS_COLLECTION = 'orders';
 
 /**
  * Remove undefined properties from an object so Firestore setDoc/updateDoc doesn't fail.
@@ -329,5 +330,71 @@ export async function saveCraftVideosToFirestore(videos: any[]): Promise<void> {
 
   const cleanData = cleanForFirestore({ items: sanitized });
   await setDoc(doc(db, SETTINGS_COLLECTION, 'craft_videos'), cleanData, { merge: true });
+}
+
+/**
+ * Real-time listener for Orders collection in Firestore.
+ */
+export function subscribeToOrders(
+  onOrdersUpdate: (orders: Order[]) => void,
+  onError?: (err: Error) => void
+) {
+  const colRef = collection(db, ORDERS_COLLECTION);
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const orderList: Order[] = snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+        } as Order;
+      });
+      // Sort orders by createdAt descending (newest first)
+      orderList.sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+      onOrdersUpdate(orderList);
+    },
+    (err) => {
+      console.error('Firestore orders listener error:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
+ * Add a new Customer Order to Firestore
+ */
+export async function addOrderToFirestore(order: Order): Promise<void> {
+  const cleanOrder = cleanForFirestore(order);
+  await setDoc(doc(db, ORDERS_COLLECTION, cleanOrder.id), cleanOrder);
+}
+
+/**
+ * Update Customer Order Status in Firestore
+ */
+export async function updateOrderStatusInFirestore(
+  orderId: string,
+  status: OrderStatus,
+  notes?: string
+): Promise<void> {
+  const updateData: { status: OrderStatus; updatedAt: string; notes?: string } = {
+    status,
+    updatedAt: new Date().toISOString(),
+  };
+  if (notes !== undefined) {
+    updateData.notes = notes;
+  }
+  await updateDoc(doc(db, ORDERS_COLLECTION, orderId), updateData);
+}
+
+/**
+ * Delete an Order from Firestore
+ */
+export async function deleteOrderFromFirestore(orderId: string): Promise<void> {
+  await deleteDoc(doc(db, ORDERS_COLLECTION, orderId));
 }
 
