@@ -1115,6 +1115,16 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
               {/* Form Add New Video */}
               <div className="bg-white p-5 rounded-3xl border border-[#EAE7E2] space-y-4">
+                <div className="bg-[#FFF8F0] border border-[#F5E0C3] p-3.5 rounded-2xl text-xs text-[#8B4513] space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-[#8B4513]" />
+                    Hướng dẫn tải video dung lượng lớn (&gt; 5MB):
+                  </div>
+                  <p className="text-[11.5px] leading-relaxed text-[#6B4724]">
+                    Cơ sở dữ liệu web có giới hạn dung lượng lưu trữ chữ. Với video 5MB, 50MB hay 1GB+, cách tốt nhất là tải video lên <strong>YouTube</strong> (chế độ Không công khai - Unlisted) hoặc <strong>Google Drive</strong>, sau đó dán link vào ô bên dưới. Trình phát sẽ tự động nhúng và phát chuẩn HD mượt mà!
+                  </p>
+                </div>
+
                 <h5 className="font-serif-vi font-bold text-sm text-[#2D2926] flex items-center gap-2 border-b border-[#EAE7E2] pb-3">
                   <Plus className="w-4 h-4 text-[#8B4513]" />
                   Thêm Video Quy Trình Mới
