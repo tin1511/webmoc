@@ -67,7 +67,7 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({
     return INITIAL_CRAFT_VIDEOS;
   });
 
-  const videos = craftVideos && craftVideos.length > 0 ? craftVideos : internalVideos;
+  const videos = craftVideos !== undefined ? craftVideos : internalVideos;
 
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
