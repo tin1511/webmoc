@@ -10,5 +10,8 @@ service cloud.firestore {
     match /login_logs/{logId} {
       allow read, write: if true;
     }
+    match /_metadata/{docId} {
+      allow read, write: if true;
+    }
   }
 }
