@@ -18,7 +18,7 @@ import { SecurityModal } from './components/SecurityModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { PRODUCTS, Product } from './data/products';
-import { UserAccount } from './types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG } from './types/auth';
 import { Filter, Sparkles, Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   subscribeToProducts,
@@ -26,12 +26,17 @@ import {
   updateProductInFirestore,
   deleteProductFromFirestore,
   toggleStockInFirestore,
+  subscribeToFooterConfig,
+  saveFooterConfigToFirestore,
 } from './lib/firestoreService';
 
 export default function App() {
   // Products list state synced with Firestore cloud database
   const [products, setProducts] = useState<Product[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
+
+  // Footer config state synced with Firestore cloud database
+  const [footerConfig, setFooterConfig] = useState<FooterConfig>(DEFAULT_FOOTER_CONFIG);
 
   // Subscribe to real-time Firestore products collection
   useEffect(() => {
@@ -41,6 +46,21 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Subscribe to real-time Firestore footer configuration
+  useEffect(() => {
+    const unsubscribe = subscribeToFooterConfig((config) => {
+      setFooterConfig(config);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSaveFooterConfig = async (config: FooterConfig) => {
+    setFooterConfig(config);
+    await saveFooterConfigToFirestore(config);
+    showToast('✨ Đã cập nhật cấu hình Chân Trang (Footer) thành công!');
+  };
+
 
   // Auth & User State
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
@@ -434,7 +454,10 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <Footer onOpenSecurity={() => setIsSecurityOpen(true)} />
+      <Footer
+        onOpenSecurity={() => setIsSecurityOpen(true)}
+        footerConfig={footerConfig}
+      />
 
       {/* Modals */}
       <SecurityModal
@@ -488,7 +511,10 @@ export default function App() {
         onDeleteProduct={handleDeleteProduct}
         onRequestDelete={setProductToDelete}
         onToggleStock={handleToggleStock}
+        footerConfig={footerConfig}
+        onSaveFooterConfig={handleSaveFooterConfig}
       />
+
 
       <DeleteConfirmModal
         isOpen={!!productToDelete}
