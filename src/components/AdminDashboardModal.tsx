@@ -449,6 +449,28 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     return nameStr.includes(filterStr) || descStr.includes(filterStr);
   });
 
+  const safeOrders = orders || [];
+  const newOrdersCount = safeOrders.filter((o) => o.status === 'Mới tiếp nhận').length;
+
+  const filteredOrders = safeOrders.filter((order) => {
+    const matchesStatus =
+      orderStatusFilter === 'all' ? true : order.status === orderStatusFilter;
+
+    if (!orderSearchFilter.trim()) return matchesStatus;
+
+    const query = orderSearchFilter.toLowerCase().trim();
+    const matchesQuery =
+      (order.id || '').toLowerCase().includes(query) ||
+      (order.customerName || '').toLowerCase().includes(query) ||
+      (order.customerPhone || '').toLowerCase().includes(query) ||
+      (order.customerAddress || '').toLowerCase().includes(query) ||
+      (order.items || []).some((item) =>
+        (item.productName || '').toLowerCase().includes(query)
+      );
+
+    return matchesStatus && matchesQuery;
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2D2926]/70 backdrop-blur-sm animate-fadeIn">
       <div
