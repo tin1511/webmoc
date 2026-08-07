@@ -31,7 +31,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
             <h2 className="text-4xl sm:text-6xl font-serif-vi leading-[1.15] text-[#2D2926]">
               Móc Khóa & Ảnh Gỗ <br className="hidden sm:inline" />
-              <span className="text-[#5A5A40]">Cá Nhân Hóa</span>
+              <span className="text-[#5A5A40]"></span>
             </h2>
 
             <p className="text-[#6B665E] text-base sm:text-lg leading-relaxed max-w-xl">
