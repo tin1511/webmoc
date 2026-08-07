@@ -176,9 +176,21 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({
   const updateVideos = (newVideos: VideoItem[]) => {
     setInternalVideos(newVideos);
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newVideos));
+      // Strip huge base64 or blob: URLs before storing into localStorage to prevent QuotaExceededError
+      const storageSafe = newVideos.map((v) => {
+        let url = v.videoUrl;
+        if (url.startsWith('blob:') || (url.startsWith('data:') && url.length > 50000)) {
+          url = 'https://assets.mixkit.co/videos/preview/mixkit-carpenter-working-with-wood-41618-large.mp4';
+        }
+        let thumb = v.thumbnailUrl;
+        if (thumb.startsWith('data:') && thumb.length > 50000) {
+          thumb = 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80';
+        }
+        return { ...v, videoUrl: url, thumbnailUrl: thumb };
+      });
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storageSafe));
     } catch (err) {
-      console.error('Failed to save videos to localStorage', err);
+      console.warn('Could not save full video payload to localStorage due to storage quota:', err);
     }
     if (onSaveVideos) {
       onSaveVideos(newVideos);
@@ -199,35 +211,28 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({
     setIsUploading(true);
     setVideoFileName(file.name);
 
-    // If file is reasonably small, convert to Data URL for persistence
-    // If large, create Object URL
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      setVideoUrlInput(result);
+    // Create Object URL for fast local playback in session
+    const objectUrl = URL.createObjectURL(file);
+    setVideoUrlInput(objectUrl);
 
-      // Auto detect video duration if possible
-      const tempVideo = document.createElement('video');
-      tempVideo.src = result;
-      tempVideo.onloadedmetadata = () => {
-        const sec = Math.floor(tempVideo.duration);
-        const mins = Math.floor(sec / 60);
-        const remainingSec = sec % 60;
-        const formatted = `${String(mins).padStart(2, '0')}:${String(remainingSec).padStart(2, '0')}`;
-        if (!isNaN(mins) && !isNaN(remainingSec)) {
-          setDuration(formatted);
-        }
-      };
-
-      setIsUploading(false);
+    // Auto detect video duration
+    const tempVideo = document.createElement('video');
+    tempVideo.src = objectUrl;
+    tempVideo.onloadedmetadata = () => {
+      const sec = Math.floor(tempVideo.duration);
+      const mins = Math.floor(sec / 60);
+      const remainingSec = sec % 60;
+      const formatted = `${String(mins).padStart(2, '0')}:${String(remainingSec).padStart(2, '0')}`;
+      if (!isNaN(mins) && !isNaN(remainingSec)) {
+        setDuration(formatted);
+      }
     };
 
-    reader.onerror = () => {
-      setUploadError('Không thể đọc file video từ máy tính.');
-      setIsUploading(false);
-    };
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError(`💡 Đã tải file (${(file.size / (1024 * 1024)).toFixed(1)}MB). Lưu ý: Với video > 5MB, hãy dùng link YouTube/Drive để xem được bền vững trên mọi thiết bị!`);
+    }
 
-    reader.readAsDataURL(file);
+    setIsUploading(false);
   };
 
   // Handle Thumbnail File Upload from computer
@@ -582,6 +587,17 @@ export const CraftVideoSection: React.FC<CraftVideoSectionProps> = ({
                     className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#5A5A40]"
                   />
                 </div>
+              </div>
+
+              {/* 5MB+ Video Tip Banner */}
+              <div className="bg-[#FFF8F0] border border-[#F5E0C3] p-3 rounded-2xl text-xs text-[#8B4513] space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#8B4513]" />
+                  Mẹo tải video dung lượng lớn (&gt; 5MB):
+                </div>
+                <p className="text-[11px] leading-relaxed text-[#6B4724]">
+                  Trình duyệt &amp; Cơ sở dữ liệu web giới hạn lưu trữ tệp lớn. Để chia sẻ video 5MB, 50MB hay 1GB+ ổn định nhất, hãy tải video lên <strong>YouTube</strong> (Unlisted/Công khai) hoặc <strong>Google Drive</strong> rồi dán link vào bên dưới!
+                </p>
               </div>
 
               {/* UPLOAD VIDEO FILE */}
