@@ -20,6 +20,7 @@ interface CartModalProps {
   onRemoveItem: (productId: string) => void;
   onClearCart: () => void;
   onPlaceOrder?: (order: Order) => Promise<void> | void;
+  onOpenAuth?: () => void;
 }
 
 export const CartModal: React.FC<CartModalProps> = ({
@@ -33,6 +34,7 @@ export const CartModal: React.FC<CartModalProps> = ({
   onRemoveItem,
   onClearCart,
   onPlaceOrder,
+  onOpenAuth,
 }) => {
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
@@ -43,6 +45,12 @@ export const CartModal: React.FC<CartModalProps> = ({
 
   // Form checkout state
   const [customerName, setCustomerName] = useState('');
+
+  React.useEffect(() => {
+    if (currentUser?.name && !customerName) {
+      setCustomerName(currentUser.name);
+    }
+  }, [currentUser]);
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [engravingNote, setEngravingNote] = useState('');
@@ -539,8 +547,15 @@ export const CartModal: React.FC<CartModalProps> = ({
               Tiếp Tục Chọn Đồ
             </button>
             <button
-              onClick={() => setIsCheckingOut(true)}
-              className="bg-[#5A5A40] hover:bg-[#4A4A35] text-white px-8 py-3.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md flex items-center gap-2"
+              onClick={() => {
+                if (!currentUser && onOpenAuth) {
+                  onClose();
+                  onOpenAuth();
+                  return;
+                }
+                setIsCheckingOut(true);
+              }}
+              className="bg-[#5A5A40] hover:bg-[#4A4A35] text-white px-8 py-3.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md flex items-center gap-2 cursor-pointer"
             >
               <span>Tiến Hành Đặt Hàng</span>
               <ArrowRight className="w-4 h-4" />
