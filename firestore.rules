@@ -19,6 +19,9 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read, write: if true;
     }
+    match /product_reviews/{reviewId} {
+      allow read, write: if true;
+    }
 
   }
 }
