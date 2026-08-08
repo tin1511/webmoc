@@ -1,5 +1,3 @@
-import emailjs from '@emailjs/browser';
-
 export const EMAILJS_CONFIG_KEY = 'bsv_emailjs_config';
 
 export interface EmailJSConfig {
@@ -57,27 +55,34 @@ export const sendOtpViaEmailJS = async (params: SendOtpParams): Promise<{ succes
   };
 
   try {
-    const response = await emailjs.send(
-      config.serviceId,
-      config.templateId,
-      templateParams,
-      config.publicKey
-    );
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_id: config.serviceId,
+        template_id: config.templateId,
+        user_id: config.publicKey,
+        template_params: templateParams,
+      }),
+    });
 
-    if (response.status === 200 || response.text === 'OK') {
+    if (response.ok) {
       return {
         success: true,
         message: `Đã gửi thành công email chứa mã OTP đến ${params.toEmail}`,
       };
     } else {
+      const errText = await response.text();
       return {
         success: false,
-        message: `Lỗi từ EmailJS: ${response.text}`,
+        message: `Lỗi từ EmailJS: ${errText}`,
       };
     }
   } catch (error: any) {
     console.warn('EmailJS sending error:', error);
-    const errText = error?.text || error?.message || String(error);
+    const errText = error?.message || String(error);
     return {
       success: false,
       message: errText,
