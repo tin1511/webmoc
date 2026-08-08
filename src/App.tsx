@@ -18,7 +18,7 @@ import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { OrderLookupModal } from './components/OrderLookupModal';
 import { PRODUCTS, Product } from './data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from './types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, ShippingConfig, DEFAULT_SHIPPING_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from './types/auth';
 import { Filter, Sparkles, Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   subscribeToProducts,
@@ -30,6 +30,8 @@ import {
   saveFooterConfigToFirestore,
   subscribeToHeaderConfig,
   saveHeaderConfigToFirestore,
+  subscribeToShippingConfig,
+  saveShippingConfigToFirestore,
   subscribeToOrders,
   updateOrderStatusInFirestore,
   deleteOrderFromFirestore,
@@ -44,9 +46,10 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
 
-  // Header & Footer config states synced with Firestore cloud database
+  // Header, Footer & Shipping config states synced with Firestore cloud database
   const [headerConfig, setHeaderConfig] = useState<HeaderConfig>(DEFAULT_HEADER_CONFIG);
   const [footerConfig, setFooterConfig] = useState<FooterConfig>(DEFAULT_FOOTER_CONFIG);
+  const [shippingConfig, setShippingConfig] = useState<ShippingConfig>(DEFAULT_SHIPPING_CONFIG);
 
   // Orders state synced with Firestore cloud database
   const [orders, setOrders] = useState<Order[]>([]);
@@ -101,6 +104,14 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Subscribe to real-time Firestore shipping configuration
+  useEffect(() => {
+    const unsubscribe = subscribeToShippingConfig((config) => {
+      setShippingConfig(config);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Subscribe to real-time Firestore orders collection
   useEffect(() => {
     const unsubscribe = subscribeToOrders((updatedOrders) => {
@@ -140,6 +151,12 @@ export default function App() {
     setFooterConfig(config);
     await saveFooterConfigToFirestore(config);
     showToast('✨ Đã cập nhật cấu hình Chân Trang (Footer) thành công!');
+  };
+
+  const handleSaveShippingConfig = async (config: ShippingConfig) => {
+    setShippingConfig(config);
+    await saveShippingConfigToFirestore(config);
+    showToast('✨ Đã cập nhật cấu hình Phí Vận Chuyển thành công!');
   };
 
 
@@ -561,6 +578,7 @@ export default function App() {
         onClose={() => setIsCartOpen(false)}
         cartItems={cartItems}
         currentUser={currentUser}
+        shippingConfig={shippingConfig}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
@@ -600,6 +618,8 @@ export default function App() {
         onSaveFooterConfig={handleSaveFooterConfig}
         headerConfig={headerConfig}
         onSaveHeaderConfig={handleSaveHeaderConfig}
+        shippingConfig={shippingConfig}
+        onSaveShippingConfig={handleSaveShippingConfig}
         orders={orders}
         reviews={reviews}
         onUpdateOrderStatus={handleUpdateOrderStatus}
