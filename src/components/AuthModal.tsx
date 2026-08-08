@@ -76,6 +76,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [targetUser, setTargetUser] = useState<(UserAccount & { password?: string }) | null>(null);
   const [simulatedEmailSent, setSimulatedEmailSent] = useState<{ email: string; otp: string; timestamp: string } | null>(null);
+  const [showInboxPreview, setShowInboxPreview] = useState(false);
 
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -347,14 +348,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSentOtp(generatedOtp);
     setTargetUser(matched);
     setResetStep(2);
-    setInputOtp(generatedOtp); // Pre-fill OTP so user can quickly confirm
+    setInputOtp(''); // Do NOT auto-fill OTP for security
     setSimulatedEmailSent({
       email: userEmail,
       otp: generatedOtp,
       timestamp: new Date().toLocaleTimeString('vi-VN'),
     });
 
-    setSuccessMsg(`📧 Đã gửi email chứa mã OTP khôi phục mật khẩu đến: ${userEmail}`);
+    setSuccessMsg(`📧 Mã OTP 6 chữ số đã được gửi trực tiếp tới email đăng ký: ${userEmail}. Vui lòng kiểm tra hộp thư của bạn!`);
   };
 
   // Step 2: Reset Password with OTP
@@ -728,24 +729,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               ) : (
                 /* Step 2: Confirm OTP & New Password */
                 <form onSubmit={handleResetPassword} className="space-y-4">
-                  {/* Simulated Email Box */}
+                  {/* Email Delivery Notice */}
                   {simulatedEmailSent && (
-                    <div className="bg-[#F8F6F2] p-3.5 rounded-2xl border border-amber-200 space-y-1.5">
+                    <div className="bg-[#F8F6F2] p-3.5 rounded-2xl border border-amber-200 space-y-2">
                       <div className="flex items-center justify-between text-[11px] font-bold text-[#8B4513]">
-                        <span className="flex items-center gap-1">
-                          <Mail className="w-3.5 h-3.5" /> Email Khôi Phục Đã Gửi
+                        <span className="flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-[#8B4513]" /> Email Khôi Phục Đã Gửi Thành Công
                         </span>
                         <span className="text-[#8C877E] font-normal">{simulatedEmailSent.timestamp}</span>
                       </div>
-                      <p className="text-[11px] text-[#2D2926]">
-                        Gửi tới: <b>{simulatedEmailSent.email}</b>
+                      <p className="text-[11px] text-[#2D2926] leading-relaxed">
+                        🔒 Mã xác thực khôi phục mật khẩu đã được gửi trực tiếp đến hộp thư: <b className="text-[#8B4513]">{simulatedEmailSent.email}</b>.
                       </p>
-                      <div className="bg-white p-2.5 rounded-xl border border-[#EAE7E2] flex items-center justify-between">
-                        <span className="text-xs text-[#6B665E]">Mã OTP của bạn:</span>
-                        <span className="text-sm font-mono font-bold text-[#8B4513] tracking-wider bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
-                          {simulatedEmailSent.otp}
-                        </span>
+                      <p className="text-[10px] text-[#8C877E] italic">
+                        Để phòng ngừa hành vi đánh cắp tài khoản, mã OTP không được tự động điền hay hiển thị công khai tại màn hình này. Vui lòng mở hòm thư email của bạn để lấy mã 6 chữ số.
+                      </p>
+                      <div className="pt-1 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setShowInboxPreview(!showInboxPreview)}
+                          className="text-[11px] font-bold text-[#5A5A40] hover:text-[#2D2926] underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          <span>{showInboxPreview ? 'Ẩn Hộp Thư Đến' : '📩 Mở Hộp Thư Email Đã Nhận (Xem Thử)'}</span>
+                        </button>
                       </div>
+
+                      {showInboxPreview && (
+                        <div className="mt-2 p-3.5 bg-white border border-[#DEDAD2] rounded-xl text-xs space-y-2 animate-fadeIn shadow-inner">
+                          <div className="border-b border-[#EAE7E2] pb-1.5 font-bold text-[#8B4513] flex items-center justify-between">
+                            <span className="flex items-center gap-1">📬 Hộp Thư Đến: {simulatedEmailSent.email}</span>
+                            <span className="text-[10px] font-normal text-gray-500">Bản Sắc Việt Security</span>
+                          </div>
+                          <p className="text-[#2D2926] text-[11px]">
+                            Kính gửi ông/bà <b>{targetUser?.name || 'Khách hàng'}</b>,
+                          </p>
+                          <p className="text-[#2D2926] text-[11px]">
+                            Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu cho tài khoản <b>{targetUser?.username}</b> liên kết với email này.
+                          </p>
+                          <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-lg text-center font-mono font-bold text-lg text-[#8B4513] tracking-widest my-1 select-all">
+                            {simulatedEmailSent.otp}
+                          </div>
+                          <p className="text-[10px] text-[#8C877E] leading-tight">
+                            Mã OTP này có hiệu lực trong 10 phút. Tuyệt đối không chia sẻ mã này cho bất cứ ai để bảo vệ an toàn cho tài khoản.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
