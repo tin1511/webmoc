@@ -18,7 +18,7 @@ import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { OrderLookupModal } from './components/OrderLookupModal';
 import { PRODUCTS, Product } from './data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS } from './types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from './types/auth';
 import { Filter, Sparkles, Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   subscribeToProducts,
@@ -36,6 +36,7 @@ import {
   subscribeToVouchers,
   saveVouchersToFirestore,
   clearAllOrdersFromFirestore,
+  subscribeToReviews,
 } from './lib/firestoreService';
 
 export default function App() {
@@ -50,6 +51,9 @@ export default function App() {
   // Orders state synced with Firestore cloud database
   const [orders, setOrders] = useState<Order[]>([]);
 
+  // Product reviews state synced with Firestore cloud database
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+
   // Vouchers state synced with Firestore cloud database
   const [vouchers, setVouchers] = useState<Voucher[]>(DEFAULT_VOUCHERS);
 
@@ -61,6 +65,14 @@ export default function App() {
     const unsubscribe = subscribeToProducts((updatedProducts) => {
       setProducts(updatedProducts);
       setIsProductsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Subscribe to real-time Firestore reviews collection
+  useEffect(() => {
+    const unsubscribe = subscribeToReviews((updatedReviews) => {
+      setReviews(updatedReviews);
     });
     return () => unsubscribe();
   }, []);
@@ -548,6 +560,7 @@ export default function App() {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cartItems={cartItems}
+        currentUser={currentUser}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
@@ -588,6 +601,7 @@ export default function App() {
         headerConfig={headerConfig}
         onSaveHeaderConfig={handleSaveHeaderConfig}
         orders={orders}
+        reviews={reviews}
         onUpdateOrderStatus={handleUpdateOrderStatus}
         onDeleteOrder={handleDeleteOrder}
         vouchers={vouchers}
@@ -600,6 +614,8 @@ export default function App() {
         onClose={() => setIsOrderLookupOpen(false)}
         orders={orders}
         products={products}
+        currentUser={currentUser}
+        onShowToast={showToast}
       />
 
 
