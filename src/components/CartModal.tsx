@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Trash2, ShoppingBag, ArrowRight, CheckCircle2, ShieldCheck, Ticket, Loader2, Tag } from 'lucide-react';
 import { Product, PROMO_CODES } from '../data/products';
 import { addOrderToFirestore } from '../lib/firestoreService';
-import { Order, Voucher, DEFAULT_VOUCHERS, UserAccount } from '../types/auth';
+import { Order, Voucher, DEFAULT_VOUCHERS, UserAccount, ShippingConfig, DEFAULT_SHIPPING_CONFIG } from '../types/auth';
 
 export interface CartItem {
   product: Product;
@@ -14,6 +14,7 @@ interface CartModalProps {
   onClose: () => void;
   cartItems: CartItem[];
   currentUser?: UserAccount | null;
+  shippingConfig?: ShippingConfig;
   vouchers?: Voucher[];
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
@@ -26,6 +27,7 @@ export const CartModal: React.FC<CartModalProps> = ({
   onClose,
   cartItems,
   currentUser,
+  shippingConfig = DEFAULT_SHIPPING_CONFIG,
   vouchers = DEFAULT_VOUCHERS,
   onUpdateQuantity,
   onRemoveItem,
@@ -79,7 +81,9 @@ export const CartModal: React.FC<CartModalProps> = ({
     }
   }
 
-  const shippingFee = subtotal >= 1000000 || subtotal === 0 ? 0 : 40000;
+  const freeThreshold = shippingConfig?.freeShippingThreshold ?? 1000000;
+  const defaultFee = shippingConfig?.defaultShippingFee ?? 40000;
+  const shippingFee = subtotal >= freeThreshold || subtotal === 0 ? 0 : defaultFee;
   const total = Math.max(0, subtotal - discount + shippingFee);
 
   const handleApplyPromo = () => {
@@ -386,10 +390,23 @@ export const CartModal: React.FC<CartModalProps> = ({
                     <span>-{discount.toLocaleString('vi-VN')} đ</span>
                   </div>
                 )}
-                <div className="flex justify-between text-[#6B665E]">
-                  <span>Phí vận chuyển toàn quốc:</span>
-                  <span>
-                    {shippingFee === 0 ? 'Miễn Phí' : `${shippingFee.toLocaleString('vi-VN')} đ`}
+                <div className="flex justify-between items-start text-[#6B665E]">
+                  <div className="flex flex-col">
+                    <span>Phí vận chuyển toàn quốc:</span>
+                    {shippingConfig?.shippingNote && (
+                      <span className="text-[10px] text-amber-800 font-medium">
+                        {shippingConfig.shippingNote}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-semibold">
+                    {shippingFee === 0 ? (
+                      <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
+                        Miễn Phí
+                      </span>
+                    ) : (
+                      `${shippingFee.toLocaleString('vi-VN')} đ`
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-base font-bold text-[#2D2926] pt-2 border-t border-[#EAE7E2]">
