@@ -11,6 +11,7 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (user: UserAccount) => void;
+  initialTab?: 'login' | 'register';
 }
 
 const LOGIN_LOGS_KEY = 'bansacviet_login_logs';
@@ -54,8 +55,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   onLoginSuccess,
+  initialTab = 'login',
 }) => {
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab);
 
   // Form fields
   const [username, setUsername] = useState('');
@@ -84,6 +86,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // Load remembered credentials when modal opens
   useEffect(() => {
     if (isOpen) {
+      setTab(initialTab);
       setError('');
       setSuccessMsg('');
       try {
