@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { X, Trash2, ShoppingBag, ArrowRight, CheckCircle2, ShieldCheck, Ticket, Loader2 } from 'lucide-react';
+import { X, Trash2, ShoppingBag, ArrowRight, CheckCircle2, ShieldCheck, Ticket, Loader2, Tag } from 'lucide-react';
 import { Product, PROMO_CODES } from '../data/products';
 import { addOrderToFirestore } from '../lib/firestoreService';
-import { Order } from '../types/auth';
+import { Order, Voucher, DEFAULT_VOUCHERS } from '../types/auth';
 
 export interface CartItem {
   product: Product;
@@ -13,6 +13,7 @@ interface CartModalProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
+  vouchers?: Voucher[];
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
   onClearCart: () => void;
@@ -23,6 +24,7 @@ export const CartModal: React.FC<CartModalProps> = ({
   isOpen,
   onClose,
   cartItems,
+  vouchers = DEFAULT_VOUCHERS,
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
@@ -39,6 +41,7 @@ export const CartModal: React.FC<CartModalProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+  const [engravingNote, setEngravingNote] = useState('');
 
   if (!isOpen) return null;
 
@@ -47,8 +50,18 @@ export const CartModal: React.FC<CartModalProps> = ({
     0
   );
 
+  const activeVouchers = (vouchers && vouchers.length > 0 ? vouchers : DEFAULT_VOUCHERS).filter(v => v.active);
+
   let discount = 0;
-  if (appliedPromo && PROMO_CODES[appliedPromo]) {
+  const currentVoucher = activeVouchers.find((v) => v.code.toUpperCase() === appliedPromo?.toUpperCase());
+
+  if (currentVoucher) {
+    if (currentVoucher.discountPercent) {
+      discount = Math.round((subtotal * currentVoucher.discountPercent) / 100);
+    } else if (currentVoucher.discountAmount) {
+      discount = currentVoucher.discountAmount;
+    }
+  } else if (appliedPromo && PROMO_CODES[appliedPromo]) {
     const codeData = PROMO_CODES[appliedPromo];
     if (codeData.discountPercent) {
       discount = Math.round((subtotal * codeData.discountPercent) / 100);
@@ -62,11 +75,15 @@ export const CartModal: React.FC<CartModalProps> = ({
 
   const handleApplyPromo = () => {
     const cleanCode = promoCode.trim().toUpperCase();
-    if (PROMO_CODES[cleanCode]) {
+    const foundVoucher = activeVouchers.find((v) => v.code.toUpperCase() === cleanCode);
+    if (foundVoucher) {
+      setAppliedPromo(foundVoucher.code);
+      setPromoError('');
+    } else if (PROMO_CODES[cleanCode]) {
       setAppliedPromo(cleanCode);
       setPromoError('');
     } else {
-      setPromoError('Mã ưu đãi không hợp lệ. Thử BANSACVIET10 hoặc TINHHOA20');
+      setPromoError('Mã ưu đãi không tồn tại hoặc đã hết hạn.');
     }
   };
 
@@ -84,6 +101,8 @@ export const CartModal: React.FC<CartModalProps> = ({
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       customerAddress: customerAddress.trim(),
+      engravingNote: engravingNote.trim() || undefined,
+      notes: engravingNote.trim() || undefined,
       items: cartItems.map((item) => ({
         productId: item.product.id,
         productName: item.product.name,
@@ -120,6 +139,7 @@ export const CartModal: React.FC<CartModalProps> = ({
       setCustomerName('');
       setCustomerPhone('');
       setCustomerAddress('');
+      setEngravingNote('');
       onClose();
     }, 2500);
   };
@@ -237,34 +257,108 @@ export const CartModal: React.FC<CartModalProps> = ({
                 ))}
               </div>
 
-              {/* Promo code input */}
-              <div className="p-4 bg-[#F0EDE9] rounded-2xl space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-[#2D2926] flex items-center gap-1.5">
-                  <Ticket className="w-3.5 h-3.5 text-[#8B4513]" />
-                  Mã Ưu Đãi / Quà Tặng
-                </label>
-                <div className="flex gap-2">
+              {/* Promo code input & Available Vouchers */}
+              <div className="p-4 bg-[#F8F6F2] border border-[#EAE7E2] rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#2D2926] flex items-center gap-1.5">
+                    <Ticket className="w-4 h-4 text-[#8B4513]" />
+                    Mã Ưu Đãi / Voucher Shop
+                  </label>
+                  {appliedPromo && (
+                    <button
+                      onClick={() => {
+                        setAppliedPromo(null);
+                        setPromoCode('');
+                        setPromoError('');
+                      }}
+                      className="text-[11px] font-bold text-red-600 hover:underline cursor-pointer"
+                    >
+                      Bỏ áp dụng
+                    </button>
+                  )}
+                </div>
+
+                {/* Voucher Quick Selector List */}
+                {activeVouchers.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[11px] text-[#8C877E] font-medium">Chạm để dùng nhanh mã giảm giá:</p>
+                    <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
+                      {activeVouchers.map((v) => {
+                        const isApplied = appliedPromo?.toUpperCase() === v.code.toUpperCase();
+                        return (
+                          <div
+                            key={v.code}
+                            className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 transition-all ${
+                              isApplied
+                                ? 'bg-[#8B4513]/10 border-[#8B4513] text-[#8B4513]'
+                                : 'bg-white border-[#EAE7E2] hover:border-[#8B4513]'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="font-mono font-bold text-xs flex items-center gap-1.5">
+                                <Tag className="w-3.5 h-3.5 text-[#8B4513]" />
+                                <span>{v.code}</span>
+                                {v.discountPercent && (
+                                  <span className="text-[10px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded-md">
+                                    -{v.discountPercent}%
+                                  </span>
+                                )}
+                                {v.discountAmount && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md">
+                                    -{v.discountAmount.toLocaleString('vi-VN')}đ
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-[#6B665E] truncate mt-0.5">{v.desc}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAppliedPromo(v.code);
+                                setPromoCode(v.code);
+                                setPromoError('');
+                              }}
+                              className={`text-[10px] font-bold px-3 py-1.5 rounded-lg shrink-0 cursor-pointer transition-all ${
+                                isApplied
+                                  ? 'bg-[#8B4513] text-white shadow-xs'
+                                  : 'bg-[#F0EDE9] text-[#2D2926] hover:bg-[#8B4513] hover:text-white'
+                              }`}
+                            >
+                              {isApplied ? '✓ Đã dùng' : 'Áp dụng'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom code input */}
+                <div className="flex gap-2 pt-1">
                   <input
                     type="text"
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value)}
-                    placeholder="VD: BANSACVIET10"
-                    className="flex-1 px-3 py-2 text-xs bg-white border border-[#DEDAD2] rounded-full focus:outline-none uppercase"
+                    placeholder="Khác: Nhập mã giảm giá..."
+                    className="flex-1 px-3 py-2 text-xs bg-white border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513] uppercase font-mono"
                   />
                   <button
+                    type="button"
                     onClick={handleApplyPromo}
-                    className="bg-[#5A5A40] text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-[#4A4A35]"
+                    className="bg-[#8B4513] text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#6E360F] cursor-pointer shrink-0"
                   >
                     Áp Dụng
                   </button>
                 </div>
+
                 {appliedPromo && (
-                  <p className="text-xs text-[#5A5A40] font-semibold">
-                    ✓ Đã áp dụng mã <b>{appliedPromo}</b>: {PROMO_CODES[appliedPromo].desc}
+                  <p className="text-xs text-green-700 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                    Đã áp dụng thành công mã ưu đãi <b className="font-mono">{appliedPromo}</b>!
                   </p>
                 )}
                 {promoError && (
-                  <p className="text-xs text-red-600">{promoError}</p>
+                  <p className="text-xs text-red-600 font-medium">{promoError}</p>
                 )}
               </div>
 
@@ -343,6 +437,29 @@ export const CartModal: React.FC<CartModalProps> = ({
                     placeholder="VD: 123 Đường Láng, Đống Đa, Hà Nội"
                     className="w-full px-4 py-2.5 text-xs bg-white border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#5A5A40]"
                   />
+                </div>
+
+                {/* Yeu Cau Khac Laser Theo Yeu Cau */}
+                <div className="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200/80 space-y-1.5">
+                  <label className="block text-xs font-bold text-[#8B4513] flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span>✒️</span>
+                      <span>Yêu Cầu Khắc Laser Chữ / Lời Chúc / Tên Lên Sản Phẩm:</span>
+                    </span>
+                    <span className="text-[10px] text-amber-800 bg-amber-100 font-bold px-2 py-0.5 rounded-md">
+                      Miễn Phí Khắc
+                    </span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={engravingNote}
+                    onChange={(e) => setEngravingNote(e.target.value)}
+                    placeholder="VD: Nhờ nghệ nhân khắc chữ 'Kỷ niệm 10 năm - Anh Nam & Chị Mai' hoặc 'Chúc Mừng Tân Gia' lên sản phẩm..."
+                    className="w-full px-3.5 py-2 text-xs bg-white border border-amber-300 rounded-xl focus:outline-none focus:border-[#8B4513] text-[#2D2926]"
+                  />
+                  <p className="text-[10px] text-[#8C877E] italic">
+                    💡 Thông tin này sẽ được gửi trực tiếp cho Quản Trị Viên & Nghệ Nhân để tiến hành khắc laser theo yêu cầu chính xác của bạn.
+                  </p>
                 </div>
               </div>
 
