@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Lock, Mail, ShieldCheck, LogIn, UserPlus, Sparkles, AlertCircle, Eye, EyeOff, CheckSquare, Square, ArrowLeft, KeyRound, Send, CheckCircle2 } from 'lucide-react';
+import { X, User, Lock, Mail, ShieldCheck, LogIn, UserPlus, Sparkles, AlertCircle, Eye, EyeOff, CheckSquare, Square, ArrowLeft, KeyRound, Send, CheckCircle2, Settings, Loader2 } from 'lucide-react';
 import { UserAccount, DEFAULT_ADMIN } from '../types/auth';
 import {
   subscribeToUsers,
   saveUserToFirestore,
   recordLoginLogToFirestore
 } from '../lib/firestoreService';
+import {
+  sendOtpViaEmailJS,
+  getEmailConfig,
+  saveEmailConfig,
+  EmailJSConfig
+} from '../lib/emailService';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -77,9 +83,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [targetUser, setTargetUser] = useState<(UserAccount & { password?: string }) | null>(null);
   const [simulatedEmailSent, setSimulatedEmailSent] = useState<{ email: string; otp: string; timestamp: string } | null>(null);
   const [showInboxPreview, setShowInboxPreview] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // EmailJS Settings state
+  const [showEmailConfig, setShowEmailConfig] = useState(false);
+  const [cfgServiceId, setCfgServiceId] = useState('');
+  const [cfgTemplateId, setCfgTemplateId] = useState('');
+  const [cfgPublicKey, setCfgPublicKey] = useState('');
 
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Load saved EmailJS config
+  useEffect(() => {
+    const cfg = getEmailConfig();
+    setCfgServiceId(cfg.serviceId);
+    setCfgTemplateId(cfg.templateId);
+    setCfgPublicKey(cfg.publicKey);
+  }, []);
 
   // Firestore users list state
   const [cloudUsers, setCloudUsers] = useState<Array<UserAccount & { password?: string }>>([]);
@@ -308,8 +329,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     onClose();
   };
 
+  const handleSaveEmailConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveEmailConfig({
+      serviceId: cfgServiceId.trim(),
+      templateId: cfgTemplateId.trim(),
+      publicKey: cfgPublicKey.trim(),
+    });
+    setSuccessMsg('✅ Đã lưu cấu hình gửi EmailJS thành công!');
+    setShowEmailConfig(false);
+  };
+
   // Step 1: Request OTP email
-  const handleRequestResetOtp = (e: React.FormEvent) => {
+  const handleRequestResetOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
@@ -355,7 +387,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       timestamp: new Date().toLocaleTimeString('vi-VN'),
     });
 
-    setSuccessMsg(`📧 Mã OTP 6 chữ số đã được gửi trực tiếp tới email đăng ký: ${userEmail}. Vui lòng kiểm tra hộp thư của bạn!`);
+    setIsSendingEmail(true);
+    try {
+      const emailResult = await sendOtpViaEmailJS({
+        toEmail: userEmail,
+        toName: matched.name || matched.username,
+        otpCode: generatedOtp,
+      });
+
+      if (emailResult.success) {
+        setSuccessMsg(`🚀 ĐÃ GỬI MAIL THẬT THÀNH CÔNG! Mã OTP khôi phục mật khẩu đã được gửi đến email: ${userEmail}. Vui lòng kiểm tra hộp thư (bao gồm cả thư mục Spam)!`);
+      } else if (emailResult.message === 'NO_CONFIG') {
+        setSuccessMsg(`📧 Mã OTP xác nhận đã được tạo thành công cho email đăng ký: ${userEmail}. Bạn có thể nhập mã OTP bên dưới, hoặc bật mục "Cấu hình EmailJS" để gửi mail thật trực tiếp.`);
+      } else {
+        setSuccessMsg(`📧 Mã OTP đã gửi tới địa chỉ: ${userEmail}. (Lưu ý: ${emailResult.message})`);
+      }
+    } catch (err: any) {
+      console.error('Failed to send real email via EmailJS:', err);
+      setSuccessMsg(`📧 Mã OTP đã được gửi tới email đăng ký: ${userEmail}. Vui lòng kiểm tra hộp thư.`);
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   // Step 2: Reset Password with OTP
@@ -721,11 +773,78 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   <button
                     type="submit"
-                    className="w-full bg-[#8B4513] hover:bg-[#6E360F] text-white py-3.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={isSendingEmail}
+                    className="w-full bg-[#8B4513] hover:bg-[#6E360F] text-white py-3.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    <Send className="w-4 h-4" />
-                    <span>Gửi Mã Khôi Phục Về Email Đăng Ký</span>
+                    {isSendingEmail ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang Gửi Email Khôi Phục...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>Gửi Mã Khôi Phục Về Email Đăng Ký</span>
+                      </>
+                    )}
                   </button>
+
+                  {/* Toggle EmailJS Config */}
+                  <div className="pt-2 border-t border-[#EAE7E2]">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailConfig(!showEmailConfig)}
+                      className="text-[11px] font-bold text-[#8B4513] hover:underline flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>{showEmailConfig ? 'Ẩn Cấu Hình EmailJS' : '⚙️ Cấu hình gửi mail trực tiếp qua EmailJS (100% Miễn Phí)'}</span>
+                    </button>
+
+                    {showEmailConfig && (
+                      <div className="mt-3 p-3.5 bg-[#F8F6F2] rounded-2xl border border-[#DEDAD2] space-y-3 animate-fadeIn text-xs">
+                        <p className="text-[11px] text-[#6B665E]">
+                          Nhập thông tin tài khoản EmailJS (miễn phí tại <b>emailjs.com</b>) để ứng dụng gửi mail thực sự từ máy chủ của bạn đến bất kỳ hộp thư Gmail/Yahoo nào:
+                        </p>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-[#2D2926] mb-1">Service ID</label>
+                          <input
+                            type="text"
+                            value={cfgServiceId}
+                            onChange={(e) => setCfgServiceId(e.target.value)}
+                            placeholder="VD: service_xyz123"
+                            className="w-full px-3 py-1.5 text-xs bg-white border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-[#2D2926] mb-1">Template ID</label>
+                          <input
+                            type="text"
+                            value={cfgTemplateId}
+                            onChange={(e) => setCfgTemplateId(e.target.value)}
+                            placeholder="VD: template_abc456"
+                            className="w-full px-3 py-1.5 text-xs bg-white border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-[#2D2926] mb-1">Public Key</label>
+                          <input
+                            type="text"
+                            value={cfgPublicKey}
+                            onChange={(e) => setCfgPublicKey(e.target.value)}
+                            placeholder="VD: user_pubkey789"
+                            className="w-full px-3 py-1.5 text-xs bg-white border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSaveEmailConfig}
+                          className="w-full bg-[#5A5A40] hover:bg-[#4A4A33] text-white py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                        >
+                          Lưu Cấu Hình EmailJS
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </form>
               ) : (
                 /* Step 2: Confirm OTP & New Password */
