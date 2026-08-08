@@ -571,6 +571,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="button"
                   onClick={() => {
                     setTab('forgot');
+                    if (username) setForgotEmailOrUser(username);
                     setResetStep(1);
                     setError('');
                     setSuccessMsg('');
@@ -698,12 +699,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {resetStep === 1 ? (
                 <form onSubmit={handleRequestResetOtp} className="space-y-4">
                   <p className="text-xs text-[#6B665E] leading-relaxed">
-                    Nhập Email hoặc Tên đăng nhập tài khoản của bạn. Hệ thống sẽ tự động gửi email xác thực kèm mã OTP khôi phục mật khẩu.
+                    Nhập Email hoặc Tên đăng nhập đã đăng ký tài khoản. Hệ thống sẽ tự động gửi mã OTP khôi phục mật khẩu trực tiếp về <b>địa chỉ Email mà bạn đã cung cấp khi tạo tài khoản</b>.
                   </p>
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-[#2D2926] mb-1.5">
-                      Email hoặc Tên đăng nhập *
+                      Email đăng ký hoặc Tên đăng nhập *
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-[#8C877E] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -723,7 +724,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     className="w-full bg-[#8B4513] hover:bg-[#6E360F] text-white py-3.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Send className="w-4 h-4" />
-                    <span>Gửi Mã Khôi Phục Về Email</span>
+                    <span>Gửi Mã Khôi Phục Về Email Đăng Ký</span>
                   </button>
                 </form>
               ) : (
