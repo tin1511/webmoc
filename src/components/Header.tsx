@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ShoppingBag, Heart, Sparkles, User, LogOut, ShieldCheck, PlusCircle } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Sparkles, User, LogOut, ShieldCheck, PlusCircle, PackageCheck } from 'lucide-react';
 import { UserAccount, HeaderConfig, DEFAULT_HEADER_CONFIG } from '../types/auth';
 
 interface HeaderProps {
@@ -16,6 +16,7 @@ interface HeaderProps {
   currentUser: UserAccount | null;
   onOpenAuth: () => void;
   onOpenAdminDashboard: () => void;
+  onOpenOrderLookup?: () => void;
   onOpenSecurity?: () => void;
   onLogout: () => void;
   headerConfig?: HeaderConfig;
@@ -33,6 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onOpenAuth,
   onOpenAdminDashboard,
+  onOpenOrderLookup,
   onOpenSecurity,
   onLogout,
   headerConfig,
@@ -109,6 +111,18 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-36 sm:w-48 lg:w-56 h-10 border border-[#DEDAD2] bg-white/70 rounded-full pl-10 pr-4 text-xs font-medium text-[#2D2926] placeholder-[#8C877E] focus:outline-none focus:border-[#5A5A40] focus:ring-1 focus:ring-[#5A5A40] transition-all"
             />
           </div>
+
+          {/* Tra Cuu Don Hang & Danh Gia */}
+          {onOpenOrderLookup && (
+            <button
+              onClick={onOpenOrderLookup}
+              className="hidden lg:flex items-center gap-1.5 bg-[#F0EDE9] hover:bg-[#EAE7E2] text-[#8B4513] font-bold text-xs px-3 py-2 rounded-full border border-[#DEDAD2] transition-colors cursor-pointer"
+              title="Tra cứu tình trạng giao hàng & Đánh giá sản phẩm"
+            >
+              <PackageCheck className="w-4 h-4 text-[#8B4513]" />
+              <span>Tra Cứu Đơn</span>
+            </button>
+          )}
 
           {/* Security Center Button */}
           {onOpenSecurity && (
