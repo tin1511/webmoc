@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Trash2, ShoppingBag, ArrowRight, CheckCircle2, ShieldCheck, Ticket, Loader2, Tag } from 'lucide-react';
 import { Product, PROMO_CODES } from '../data/products';
 import { addOrderToFirestore } from '../lib/firestoreService';
-import { Order, Voucher, DEFAULT_VOUCHERS } from '../types/auth';
+import { Order, Voucher, DEFAULT_VOUCHERS, UserAccount } from '../types/auth';
 
 export interface CartItem {
   product: Product;
@@ -13,6 +13,7 @@ interface CartModalProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
+  currentUser?: UserAccount | null;
   vouchers?: Voucher[];
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
@@ -24,6 +25,7 @@ export const CartModal: React.FC<CartModalProps> = ({
   isOpen,
   onClose,
   cartItems,
+  currentUser,
   vouchers = DEFAULT_VOUCHERS,
   onUpdateQuantity,
   onRemoveItem,
@@ -42,6 +44,13 @@ export const CartModal: React.FC<CartModalProps> = ({
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [engravingNote, setEngravingNote] = useState('');
+
+  // Prefill customer name if logged in
+  React.useEffect(() => {
+    if (currentUser?.name && !customerName) {
+      setCustomerName(currentUser.name);
+    }
+  }, [currentUser]);
 
   if (!isOpen) return null;
 
@@ -98,6 +107,9 @@ export const CartModal: React.FC<CartModalProps> = ({
     const orderId = `MD-${Date.now().toString().slice(-6)}`;
     const newOrder: Order = {
       id: orderId,
+      userId: currentUser?.username || undefined,
+      username: currentUser?.username || undefined,
+      userEmail: currentUser?.email || undefined,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       customerAddress: customerAddress.trim(),
