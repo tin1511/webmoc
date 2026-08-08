@@ -11,7 +11,7 @@ import {
 from 'firebase/firestore';
 import { db } from './firebase';
 import { Product, PRODUCTS } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, ShippingConfig, DEFAULT_SHIPPING_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from '../types/auth';
 
 const PRODUCTS_COLLECTION = 'products';
 const USERS_COLLECTION = 'users';
@@ -269,6 +269,38 @@ export function subscribeToHeaderConfig(
 export async function saveHeaderConfigToFirestore(config: HeaderConfig): Promise<void> {
   const cleanConfig = cleanForFirestore(config);
   await setDoc(doc(db, SETTINGS_COLLECTION, 'header'), cleanConfig, { merge: true });
+}
+
+/**
+  * Subscribe to Shipping configuration settings from Firestore
+  */
+export function subscribeToShippingConfig(
+  onShippingUpdate: (config: ShippingConfig) => void
+) {
+  const docRef = doc(db, SETTINGS_COLLECTION, 'shipping');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as ShippingConfig;
+        onShippingUpdate({ ...DEFAULT_SHIPPING_CONFIG, ...data });
+      } else {
+        onShippingUpdate(DEFAULT_SHIPPING_CONFIG);
+      }
+    },
+    (err) => {
+      console.error('Firestore shipping config listener error:', err);
+      onShippingUpdate(DEFAULT_SHIPPING_CONFIG);
+    }
+  );
+}
+
+/**
+  * Save updated Shipping configuration to Firestore
+  */
+export async function saveShippingConfigToFirestore(config: ShippingConfig): Promise<void> {
+  const cleanConfig = cleanForFirestore(config);
+  await setDoc(doc(db, SETTINGS_COLLECTION, 'shipping'), cleanConfig, { merge: true });
 }
 
 /**
