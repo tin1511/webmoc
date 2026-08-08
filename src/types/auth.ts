@@ -140,3 +140,15 @@ export const DEFAULT_FOOTER_CONFIG: FooterConfig = {
   zaloUrl: 'https://zalo.me',
 };
 
+export interface ShippingConfig {
+  defaultShippingFee: number;
+  freeShippingThreshold: number;
+  shippingNote?: string;
+}
+
+export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
+  defaultShippingFee: 40000,
+  freeShippingThreshold: 1000000,
+  shippingNote: 'Miễn phí giao hàng toàn quốc cho đơn từ 1.000.000đ',
+};
+
