@@ -108,7 +108,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const [newVoucherDesc, setNewVoucherDesc] = useState('');
 
   React.useEffect(() => {
-    if (vouchers && vouchers.length > 0) {
+    if (vouchers) {
       setVouchersList(vouchers);
     }
   }, [vouchers]);
@@ -1846,62 +1846,70 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EAE7E2]">
-                    {vouchersList.map((v) => (
-                      <tr key={v.code} className="hover:bg-[#FDFBF7] transition-colors">
-                        <td className="p-3.5 font-mono font-bold text-[#8B4513] text-sm">
-                          🎟️ {v.code}
-                        </td>
-                        <td className="p-3.5 font-bold text-[#2D2926]">
-                          {v.discountPercent && (
-                            <span className="text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg">
-                              Giảm {v.discountPercent}%
-                            </span>
-                          )}
-                          {v.discountAmount && (
-                            <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
-                              Giảm {v.discountAmount.toLocaleString('vi-VN')} đ
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3.5 text-[#6B665E] font-medium">
-                          {v.desc}
-                        </td>
-                        <td className="p-3.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = vouchersList.map((item) =>
-                                item.code === v.code ? { ...item, active: !item.active } : item
-                              );
-                              setVouchersList(updated);
-                              if (onSaveVouchers) onSaveVouchers(updated);
-                            }}
-                            className={`px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
-                              v.active
-                                ? 'bg-green-100 text-green-800 border border-green-300'
-                                : 'bg-gray-100 text-gray-500 border border-gray-300'
-                            }`}
-                          >
-                            {v.active ? '🟢 Đang Áp Dụng' : '⚪ Đã Tắt'}
-                          </button>
-                        </td>
-                        <td className="p-3.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = vouchersList.filter((item) => item.code !== v.code);
-                              setVouchersList(updated);
-                              if (onSaveVouchers) onSaveVouchers(updated);
-                              setStatusMessage({ text: `Đã xóa voucher ${v.code}!`, type: 'success' });
-                            }}
-                            className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                            title="Xóa voucher"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                    {vouchersList.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-[#8C877E] text-xs">
+                          Chưa có mã voucher nào. Hãy nhập thông tin phía trên và nhấn <b className="text-[#8B4513]">"Thêm Voucher"</b> để tạo mã giảm giá mới!
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      vouchersList.map((v) => (
+                        <tr key={v.code} className="hover:bg-[#FDFBF7] transition-colors">
+                          <td className="p-3.5 font-mono font-bold text-[#8B4513] text-sm">
+                            🎟️ {v.code}
+                          </td>
+                          <td className="p-3.5 font-bold text-[#2D2926]">
+                            {v.discountPercent && (
+                              <span className="text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg">
+                                Giảm {v.discountPercent}%
+                              </span>
+                            )}
+                            {v.discountAmount && (
+                              <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                                Giảm {v.discountAmount.toLocaleString('vi-VN')} đ
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3.5 text-[#6B665E] font-medium">
+                            {v.desc}
+                          </td>
+                          <td className="p-3.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = vouchersList.map((item) =>
+                                  item.code === v.code ? { ...item, active: !item.active } : item
+                                );
+                                setVouchersList(updated);
+                                if (onSaveVouchers) onSaveVouchers(updated);
+                              }}
+                              className={`px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+                                v.active
+                                  ? 'bg-green-100 text-green-800 border border-green-300'
+                                  : 'bg-gray-100 text-gray-500 border border-gray-300'
+                              }`}
+                            >
+                              {v.active ? '🟢 Đang Áp Dụng' : '⚪ Đã Tắt'}
+                            </button>
+                          </td>
+                          <td className="p-3.5 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = vouchersList.filter((item) => item.code !== v.code);
+                                setVouchersList(updated);
+                                if (onSaveVouchers) onSaveVouchers(updated);
+                                setStatusMessage({ text: `Đã xóa voucher ${v.code}!`, type: 'success' });
+                              }}
+                              className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                              title="Xóa voucher"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
