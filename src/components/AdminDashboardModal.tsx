@@ -33,9 +33,13 @@ import {
   Sparkles,
   AlertCircle,
   Filter,
+  Ticket,
+  RefreshCw,
+  Truck,
+  CheckCircle,
 } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS } from '../types/auth';
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -55,6 +59,9 @@ interface AdminDashboardModalProps {
   orders?: Order[];
   onUpdateOrderStatus?: (orderId: string, status: OrderStatus, notes?: string) => Promise<void> | void;
   onDeleteOrder?: (orderId: string) => Promise<void> | void;
+  vouchers?: Voucher[];
+  onSaveVouchers?: (vouchers: Voucher[]) => Promise<void> | void;
+  onResetStats?: () => Promise<void> | void;
 }
 
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
@@ -75,13 +82,29 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   orders = [],
   onUpdateOrderStatus,
   onDeleteOrder,
+  vouchers = DEFAULT_VOUCHERS,
+  onSaveVouchers,
+  onResetStats,
 }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'orders' | 'header' | 'footer'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'orders' | 'vouchers' | 'header' | 'footer'>('stats');
   const [productSubMode, setProductSubMode] = useState<'list' | 'form'>('list');
   const [searchFilter, setSearchFilter] = useState('');
   const [orderSearchFilter, setOrderSearchFilter] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Vouchers state
+  const [vouchersList, setVouchersList] = useState<Voucher[]>(vouchers || DEFAULT_VOUCHERS);
+  const [newVoucherCode, setNewVoucherCode] = useState('');
+  const [newVoucherPercent, setNewVoucherPercent] = useState('10');
+  const [newVoucherAmount, setNewVoucherAmount] = useState('0');
+  const [newVoucherDesc, setNewVoucherDesc] = useState('');
+
+  React.useEffect(() => {
+    if (vouchers && vouchers.length > 0) {
+      setVouchersList(vouchers);
+    }
+  }, [vouchers]);
 
   const [headerForm, setHeaderForm] = useState<HeaderConfig>(() => ({
     ...DEFAULT_HEADER_CONFIG,
@@ -410,18 +433,37 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   const totalOutOfStock = safeProducts.filter((p) => p && !p.inStock).length;
   const stockPercentage = totalProducts > 0 ? Math.round((totalInStock / totalProducts) * 100) : 0;
 
-  // Calculate sold units and total revenue per product
-  const getProductSoldUnits = (p: Product) => (p && p.reviewsCount ? p.reviewsCount * 4 + 12 : 16);
-  const totalUnitsSold = safeProducts.reduce((acc, p) => acc + getProductSoldUnits(p), 0);
-  const totalRevenue = safeProducts.reduce((acc, p) => acc + (Number(p?.price) || 0) * getProductSoldUnits(p), 0);
-  const totalOrders = Math.round(totalUnitsSold / 1.8);
+  const safeOrders = orders || [];
+  const validOrders = safeOrders.filter((o) => o.status !== 'Đã hủy');
+  const totalOrders = validOrders.length;
+  const totalRevenue = validOrders.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+
+  // Map product ID to total sold quantity from real orders
+  const productSoldMap: Record<string, number> = {};
+  validOrders.forEach((o) => {
+    (o.items || []).forEach((item) => {
+      if (item.productId) {
+        productSoldMap[item.productId] = (productSoldMap[item.productId] || 0) + (Number(item.quantity) || 1);
+      }
+    });
+  });
+
+  const getProductSoldUnits = (p: Product) => {
+    if (!p) return 0;
+    return productSoldMap[p.id] || 0;
+  };
+
+  const totalUnitsSold = Object.values(productSoldMap).reduce((acc, qty) => acc + qty, 0);
   const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
   // Revenue & Sold units breakdown by Category
   const categoryStats = CATEGORIES_INFO.filter((c) => c && c.id !== 'tat-ca').map((cat) => {
     const categoryProducts = safeProducts.filter((p) => p && p.category === cat.id);
     const catSoldUnits = categoryProducts.reduce((acc, p) => acc + getProductSoldUnits(p), 0);
-    const catRevenue = categoryProducts.reduce((acc, p) => acc + (Number(p?.price) || 0) * getProductSoldUnits(p), 0);
+    const catRevenue = categoryProducts.reduce((acc, p) => {
+      const sold = getProductSoldUnits(p);
+      return acc + (Number(p?.price) || 0) * sold;
+    }, 0);
     return {
       category: cat,
       productCount: categoryProducts.length,
@@ -449,7 +491,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
     return nameStr.includes(filterStr) || descStr.includes(filterStr);
   });
 
-  const safeOrders = orders || [];
   const newOrdersCount = safeOrders.filter((o) => o.status === 'Mới tiếp nhận').length;
 
   const filteredOrders = safeOrders.filter((order) => {
@@ -547,6 +588,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 {newOrdersCount} mới
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('vouchers')}
+            className={`flex-1 py-3.5 flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer ${
+              activeTab === 'vouchers'
+                ? 'border-[#8B4513] text-[#8B4513] bg-[#FDFBF7] font-bold'
+                : 'border-transparent text-[#6B665E] hover:text-[#2D2926]'
+            }`}
+          >
+            <Ticket className="w-4 h-4 text-[#8B4513]" />
+            <span>Voucher ({vouchersList.length})</span>
           </button>
 
           <button
@@ -896,6 +949,42 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
 
           {activeTab === 'stats' && (
             <div className="space-y-6">
+              {/* TOP BAR: RESET STATS BUTTON */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#EAE7E2] shadow-2xs">
+                <div>
+                  <h4 className="font-serif-vi font-bold text-base text-[#2D2926] flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-[#8B4513]" />
+                    <span>Bảng Thống Kê Doanh Thu & Chi Tiết Từng Hàng Hóa</span>
+                  </h4>
+                  <p className="text-xs text-[#6B665E]">
+                    Theo dõi số lượng bán ra, doanh thu theo sản phẩm và quản lý thông số kho hàng.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (
+                      window.confirm(
+                        '⚠️ XÁC NHẬN RESET THỐNG KÊ:\n\nBạn có chắc chắn muốn xóa tất cả đơn hàng để RESET THỐNG KÊ DOANH THU & HÀNG HÓA VỀ 0?\nThao tác này không thể hoàn tác!'
+                      )
+                    ) {
+                      if (onResetStats) {
+                        await onResetStats();
+                        setStatusMessage({
+                          text: '✨ Đã reset thành công toàn bộ số liệu thống kê doanh thu và đơn hàng về 0!',
+                          type: 'success',
+                        });
+                      }
+                    }
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-xs transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Reset Thống Kê Về 0</span>
+                </button>
+              </div>
+
               {/* SECTION 1: TOP SUMMARY STAT CARDS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* 1. Doanh thu tổng */}
@@ -914,7 +1003,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     </h4>
                     <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
                       <ArrowUpRight className="w-3.5 h-3.5" />
-                      <span>{totalOrders} đơn hàng thành công</span>
+                      <span>{totalOrders} đơn hàng phát sinh</span>
                     </p>
                   </div>
                 </div>
@@ -983,97 +1072,153 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 2: BREAKDOWN & BESTSELLERS GRID */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Revenue & Sales by Category */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-[#EAE7E2] shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#EAE7E2] pb-3">
-                    <div className="flex items-center gap-2">
-                      <BarChart2 className="w-5 h-5 text-[#8B4513]" />
-                      <h4 className="font-serif-vi font-bold text-base text-[#2D2926]">
-                        Doanh Thu & Hàng Bán Theo Danh Mục
-                      </h4>
-                    </div>
-                    <span className="text-xs text-[#8C877E]">Tất cả {categoryStats.length} nhóm</span>
+              {/* SECTION 2: PRODUCT-BY-PRODUCT DETAILED STATS TABLE */}
+              <div className="bg-white p-6 rounded-3xl border border-[#EAE7E2] shadow-2xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE7E2] pb-3">
+                  <div className="flex items-center gap-2">
+                    <BarChart2 className="w-5 h-5 text-[#8B4513]" />
+                    <h4 className="font-serif-vi font-bold text-base text-[#2D2926]">
+                      Thống Kê Chi Tiết Bán Hàng Theo Từng Hàng Hóa / Sản Phẩm
+                    </h4>
                   </div>
+                  <span className="text-xs text-[#8C877E]">
+                    Tổng cộng {safeProducts.length} mẫu sản phẩm
+                  </span>
+                </div>
 
-                  <div className="space-y-4">
-                    {categoryStats.map((item) => (
-                      <div key={item.category.id} className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2 font-bold text-[#2D2926]">
-                            <span className="text-sm">{item.category.icon}</span>
-                            <span>{item.category.name}</span>
-                            <span className="text-[10px] text-[#8C877E] font-normal">
-                              ({item.productCount} mẫu)
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-bold text-[#8B4513]">
-                              {item.revenue.toLocaleString('vi-VN')} đ
-                            </span>
-                            <span className="text-[11px] text-[#6B665E] ml-2 font-medium">
-                              ({item.soldUnits} đã bán)
-                            </span>
-                          </div>
-                        </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-[#F8F6F2] text-[#6B665E] font-bold uppercase tracking-wider border-b border-[#EAE7E2]">
+                      <tr>
+                        <th className="p-3">Sản Phẩm / Hàng Hóa</th>
+                        <th className="p-3">Đơn Giá</th>
+                        <th className="p-3">Tình Trạng Kho</th>
+                        <th className="p-3 text-center">Đã Bán Out</th>
+                        <th className="p-3 text-right">Doanh Thu</th>
+                        <th className="p-3 w-36">Tỷ Lệ Đóng Góp</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EAE7E2]">
+                      {safeProducts.map((p) => {
+                        const sold = getProductSoldUnits(p);
+                        const rev = sold * (Number(p.price) || 0);
+                        const share = totalRevenue > 0 ? Math.round((rev / totalRevenue) * 100) : 0;
 
-                        {/* Progress Bar */}
-                        <div className="w-full h-2.5 bg-[#F0EDE9] rounded-full overflow-hidden flex">
-                          <div
-                            className="bg-gradient-to-r from-[#8B4513] to-[#A0522D] h-full rounded-full transition-all duration-500"
-                            style={{ width: `${Math.max(item.revenueShare, 5)}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                        return (
+                          <tr key={p.id} className="hover:bg-[#FDFBF7] transition-colors">
+                            <td className="p-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={p.imageUrl}
+                                  alt={p.name}
+                                  className="w-10 h-10 rounded-xl object-cover border border-[#EAE7E2] shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <p className="font-bold text-[#2D2926] truncate">{p.name}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[10px] bg-[#F0EDE9] text-[#6B665E] px-1.5 py-0.2 rounded-md">
+                                      {p.category}
+                                    </span>
+                                    {p.village && (
+                                      <span className="text-[10px] text-[#8B4513]">
+                                        📍 {p.village}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="p-3 font-mono font-bold text-[#2D2926]">
+                              {(p.price || 0).toLocaleString('vi-VN')} đ
+                            </td>
+
+                            <td className="p-3">
+                              <span
+                                className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                                  p.inStock
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {p.inStock ? 'Còn Hàng' : 'Tạm Hết'}
+                              </span>
+                            </td>
+
+                            <td className="p-3 text-center">
+                              <span className="font-bold text-sm bg-[#8B4513]/10 text-[#8B4513] px-3 py-1 rounded-full font-mono">
+                                {sold}
+                              </span>
+                            </td>
+
+                            <td className="p-3 text-right font-mono font-bold text-sm text-[#8B4513]">
+                              {rev.toLocaleString('vi-VN')} đ
+                            </td>
+
+                            <td className="p-3">
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-[10px] font-bold text-[#6B665E]">
+                                  <span>{share}%</span>
+                                </div>
+                                <div className="w-full h-2 bg-[#F0EDE9] rounded-full overflow-hidden">
+                                  <div
+                                    className="bg-[#8B4513] h-full rounded-full transition-all duration-300"
+                                    style={{ width: `${Math.max(share, sold > 0 ? 5 : 0)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* SECTION 3: TOP BESTSELLERS */}
+              <div className="bg-white p-6 rounded-3xl border border-[#EAE7E2] shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#EAE7E2] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-[#8B4513]" />
+                    <h4 className="font-serif-vi font-bold text-base text-[#2D2926]">
+                      Top Sản Phẩm Bán Chạy Nhất
+                    </h4>
                   </div>
                 </div>
 
-                {/* Top Bestsellers */}
-                <div className="bg-white p-6 rounded-3xl border border-[#EAE7E2] shadow-2xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#EAE7E2] pb-3">
-                    <div className="flex items-center gap-2">
-                      <Award className="w-5 h-5 text-[#8B4513]" />
-                      <h4 className="font-serif-vi font-bold text-base text-[#2D2926]">
-                        Top Sản Phẩm Bán Chạy
-                      </h4>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {topProducts.map((tp, idx) => (
-                      <div
-                        key={tp.product.id}
-                        className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#FDFBF7] border border-[#EAE7E2] hover:bg-[#F5F3EF] transition-colors"
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {topProducts.map((tp, idx) => (
+                    <div
+                      key={tp.product.id}
+                      className="flex items-center gap-3 p-3 rounded-2xl bg-[#FDFBF7] border border-[#EAE7E2] hover:bg-[#F5F3EF] transition-colors"
+                    >
+                      <span
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                          idx === 0
+                            ? 'bg-[#8B4513] text-white'
+                            : idx === 1
+                            ? 'bg-[#5A5A40] text-white'
+                            : 'bg-[#EAE7E2] text-[#2D2926]'
+                        }`}
                       >
-                        <span
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                            idx === 0
-                              ? 'bg-[#8B4513] text-white'
-                              : idx === 1
-                              ? 'bg-[#5A5A40] text-white'
-                              : 'bg-[#EAE7E2] text-[#2D2926]'
-                          }`}
-                        >
-                          {idx + 1}
-                        </span>
-                        <img
-                          src={tp.product.imageUrl}
-                          alt={tp.product.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-[#DEDAD2] shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <h5 className="font-bold text-xs text-[#2D2926] truncate">
-                            {tp.product.name}
-                          </h5>
-                          <p className="text-[10px] text-[#6B665E] mt-0.5">
-                            Đã bán: <b className="text-[#8B4513]">{tp.soldUnits}</b> chiếc
-                          </p>
-                        </div>
+                        {idx + 1}
+                      </span>
+                      <img
+                        src={tp.product.imageUrl}
+                        alt={tp.product.name}
+                        className="w-10 h-10 rounded-xl object-cover border border-[#DEDAD2] shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h5 className="font-bold text-xs text-[#2D2926] truncate">
+                          {tp.product.name}
+                        </h5>
+                        <p className="text-[10px] text-[#6B665E] mt-0.5">
+                          Đã bán: <b className="text-[#8B4513]">{tp.soldUnits}</b> sản phẩm
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1085,7 +1230,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                     Hệ Thống Thống Kê & Báo Cáo Tự Động
                   </h5>
                   <p className="text-xs text-[#6B665E] leading-relaxed">
-                    Dữ liệu doanh thu và tồn kho được tự động tính toán đồng bộ theo thời gian thực mỗi khi bạn thêm sản phẩm mới, cập nhật giá bán hoặc xóa sản phẩm khỏi gian hàng.
+                    Dữ liệu doanh thu và tồn kho được tự động tính toán đồng bộ theo thời gian thực dựa trên toàn bộ đơn hàng thực tế của khách hàng.
                   </p>
                 </div>
               </div>
@@ -1183,8 +1328,46 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#6B665E] hidden sm:inline">Trạng thái:</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Quick Action Buttons */}
+                            {order.status !== 'Đang giao hàng' && order.status !== 'Đã hoàn thành' && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (onUpdateOrderStatus) {
+                                    await onUpdateOrderStatus(order.id, 'Đang giao hàng');
+                                    setStatusMessage({
+                                      text: `🚚 Đã bấm GIAO HÀNG cho đơn #${order.id}! Trạng thái chuyển sang "Đang giao hàng".`,
+                                      type: 'success',
+                                    });
+                                  }
+                                }}
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                                <span>Giao Hàng</span>
+                              </button>
+                            )}
+
+                            {order.status !== 'Đã hoàn thành' && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (onUpdateOrderStatus) {
+                                    await onUpdateOrderStatus(order.id, 'Đã hoàn thành');
+                                    setStatusMessage({
+                                      text: `✅ Đã đánh dấu HOÀN THÀNH cho đơn #${order.id}!`,
+                                      type: 'success',
+                                    });
+                                  }
+                                }}
+                                className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs px-3 py-1.5 rounded-full flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>Hoàn Thành</span>
+                              </button>
+                            )}
+
                             <select
                               value={order.status}
                               onChange={async (e) => {
@@ -1276,6 +1459,32 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             </div>
                           </div>
 
+                          {/* Yêu Cầu Khắc Laser Theo Yêu Cầu Của Khách Hàng */}
+                          {order.engravingNote || order.notes ? (
+                            <div className="bg-amber-50/90 border-2 border-dashed border-amber-600/50 p-4 rounded-2xl flex items-start gap-3 shadow-2xs">
+                              <div className="w-9 h-9 rounded-2xl bg-[#8B4513] text-white flex items-center justify-center font-bold text-base shrink-0 shadow-xs">
+                                ✒️
+                              </div>
+                              <div className="space-y-1 flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <span className="font-bold text-[#8B4513] text-xs uppercase tracking-wider flex items-center gap-1.5">
+                                    Yêu Cầu Khắc Laser Theo Yêu Cầu Của Khách Hàng:
+                                  </span>
+                                  <span className="bg-amber-200 text-amber-900 font-bold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+                                    ✍️ Chế Tác Riêng
+                                  </span>
+                                </div>
+                                <div className="bg-white p-3 rounded-xl border border-amber-200 text-xs font-bold text-[#2D2926] leading-relaxed font-serif-vi shadow-2xs">
+                                  "{order.engravingNote || order.notes}"
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-[#F8F6F2] p-2.5 rounded-2xl border border-[#EAE7E2] text-[11px] text-[#8C877E] italic flex items-center gap-2">
+                              <span>✒️ Khách không ghi chú khắc thêm (Chế tác theo mẫu chuẩn gốc của xưởng).</span>
+                            </div>
+                          )}
+
                           {/* Order Products List */}
                           <div className="border border-[#EAE7E2] rounded-2xl overflow-hidden divide-y divide-[#EAE7E2]">
                             <div className="bg-[#FDFBF7] px-4 py-2 text-[11px] font-bold text-[#6B665E] uppercase tracking-wider flex justify-between">
@@ -1339,6 +1548,203 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'vouchers' && (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-[#EAE7E2] shadow-2xs">
+                <div>
+                  <h4 className="font-serif-vi font-bold text-base text-[#2D2926] flex items-center gap-2">
+                    <Ticket className="w-5 h-5 text-[#8B4513]" />
+                    <span>Quản Lý Voucher & Mã Giảm Giá Cửa Hàng</span>
+                  </h4>
+                  <p className="text-xs text-[#6B665E]">
+                    Tạo mới, chỉnh sửa mức giảm giá (theo % hoặc số tiền đ) và bật/tắt hiển thị mã ưu đãi.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (onSaveVouchers) {
+                      await onSaveVouchers(vouchersList);
+                      setStatusMessage({
+                        text: '✨ Đã lưu và đồng bộ danh sách Voucher lên Cloud thành công!',
+                        type: 'success',
+                      });
+                    }
+                  }}
+                  className="bg-[#8B4513] hover:bg-[#6E360F] text-white text-xs font-bold px-5 py-2.5 rounded-2xl flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors shrink-0"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Lưu Danh Sách Voucher</span>
+                </button>
+              </div>
+
+              {/* Form Add New Voucher */}
+              <div className="bg-white p-5 rounded-3xl border border-[#EAE7E2] shadow-2xs space-y-4">
+                <h5 className="font-bold text-xs uppercase tracking-wider text-[#2D2926]">
+                  ➕ Thêm Mã Voucher Mới:
+                </h5>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[#6B665E] font-bold mb-1">Mã voucher (Code) *</label>
+                    <input
+                      type="text"
+                      placeholder="VD: MOCGO15"
+                      value={newVoucherCode}
+                      onChange={(e) => setNewVoucherCode(e.target.value.toUpperCase())}
+                      className="w-full p-2.5 bg-[#F8F6F2] border border-[#DEDAD2] rounded-xl uppercase font-mono font-bold focus:outline-none focus:border-[#8B4513]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[#6B665E] font-bold mb-1">Mức Giảm Theo (%)</label>
+                    <input
+                      type="number"
+                      placeholder="VD: 15"
+                      value={newVoucherPercent}
+                      onChange={(e) => {
+                        setNewVoucherPercent(e.target.value);
+                        setNewVoucherAmount('0');
+                      }}
+                      className="w-full p-2.5 bg-[#F8F6F2] border border-[#DEDAD2] rounded-xl font-bold focus:outline-none focus:border-[#8B4513]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[#6B665E] font-bold mb-1">Hoặc Giảm Tiền Trực Tiếp (VNĐ)</label>
+                    <input
+                      type="number"
+                      placeholder="VD: 50000"
+                      value={newVoucherAmount}
+                      onChange={(e) => {
+                        setNewVoucherAmount(e.target.value);
+                        setNewVoucherPercent('0');
+                      }}
+                      className="w-full p-2.5 bg-[#F8F6F2] border border-[#DEDAD2] rounded-xl font-bold focus:outline-none focus:border-[#8B4513]"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-1 flex items-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newVoucherCode.trim()) {
+                          setStatusMessage({ text: 'Vui lòng nhập Mã giảm giá!', type: 'error' });
+                          return;
+                        }
+                        const percentNum = Number(newVoucherPercent) || 0;
+                        const amountNum = Number(newVoucherAmount) || 0;
+
+                        const voucherObj: Voucher = {
+                          code: newVoucherCode.trim().toUpperCase(),
+                          discountPercent: percentNum > 0 ? percentNum : undefined,
+                          discountAmount: amountNum > 0 ? amountNum : undefined,
+                          desc: newVoucherDesc.trim() || `Ưu đãi giảm giá ${newVoucherCode}`,
+                          active: true,
+                        };
+
+                        const updated = [voucherObj, ...vouchersList.filter((v) => v.code !== voucherObj.code)];
+                        setVouchersList(updated);
+                        if (onSaveVouchers) onSaveVouchers(updated);
+
+                        setNewVoucherCode('');
+                        setNewVoucherDesc('');
+                        setStatusMessage({ text: `✨ Đã thêm mã voucher ${voucherObj.code}!`, type: 'success' });
+                      }}
+                      className="w-full bg-[#5A5A40] hover:bg-[#4A4A35] text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer shadow-xs transition-colors"
+                    >
+                      Thêm Voucher
+                    </button>
+                  </div>
+
+                  <div className="sm:col-span-4">
+                    <label className="block text-[#6B665E] font-bold mb-1">Mô tả hiển thị cho khách hàng:</label>
+                    <input
+                      type="text"
+                      placeholder="VD: Giảm ngay 15% tri ân khách hàng thân thiết mua tranh gỗ & quà tặng"
+                      value={newVoucherDesc}
+                      onChange={(e) => setNewVoucherDesc(e.target.value)}
+                      className="w-full p-2.5 bg-[#F8F6F2] border border-[#DEDAD2] rounded-xl focus:outline-none focus:border-[#8B4513]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Existing Vouchers List Table */}
+              <div className="bg-white rounded-3xl border border-[#EAE7E2] overflow-hidden shadow-2xs">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#F8F6F2] text-[#6B665E] font-bold uppercase tracking-wider border-b border-[#EAE7E2]">
+                    <tr>
+                      <th className="p-3.5">Mã Voucher</th>
+                      <th className="p-3.5">Mức Giảm</th>
+                      <th className="p-3.5">Mô Tả Quà Tặng</th>
+                      <th className="p-3.5">Trạng Thái</th>
+                      <th className="p-3.5 text-right">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EAE7E2]">
+                    {vouchersList.map((v) => (
+                      <tr key={v.code} className="hover:bg-[#FDFBF7] transition-colors">
+                        <td className="p-3.5 font-mono font-bold text-[#8B4513] text-sm">
+                          🎟️ {v.code}
+                        </td>
+                        <td className="p-3.5 font-bold text-[#2D2926]">
+                          {v.discountPercent && (
+                            <span className="text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg">
+                              Giảm {v.discountPercent}%
+                            </span>
+                          )}
+                          {v.discountAmount && (
+                            <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                              Giảm {v.discountAmount.toLocaleString('vi-VN')} đ
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3.5 text-[#6B665E] font-medium">
+                          {v.desc}
+                        </td>
+                        <td className="p-3.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = vouchersList.map((item) =>
+                                item.code === v.code ? { ...item, active: !item.active } : item
+                              );
+                              setVouchersList(updated);
+                              if (onSaveVouchers) onSaveVouchers(updated);
+                            }}
+                            className={`px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+                              v.active
+                                ? 'bg-green-100 text-green-800 border border-green-300'
+                                : 'bg-gray-100 text-gray-500 border border-gray-300'
+                            }`}
+                          >
+                            {v.active ? '🟢 Đang Áp Dụng' : '⚪ Đã Tắt'}
+                          </button>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = vouchersList.filter((item) => item.code !== v.code);
+                              setVouchersList(updated);
+                              if (onSaveVouchers) onSaveVouchers(updated);
+                              setStatusMessage({ text: `Đã xóa voucher ${v.code}!`, type: 'success' });
+                            }}
+                            className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                            title="Xóa voucher"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
