@@ -1,3 +1,47 @@
+export interface Voucher {
+  code: string;
+  discountPercent?: number;
+  discountAmount?: number;
+  desc: string;
+  minOrderTotal?: number;
+  active: boolean;
+}
+
+export const DEFAULT_VOUCHERS: Voucher[] = [
+  {
+    code: 'MOCGO10',
+    discountPercent: 10,
+    desc: 'Giảm 10% tri ân khách hàng mua đồ gỗ custom',
+    minOrderTotal: 0,
+    active: true,
+  },
+  {
+    code: 'KHACLASER20',
+    discountAmount: 30000,
+    desc: 'Giảm 30.000đ cho đơn ảnh chân dung & tranh gỗ',
+    minOrderTotal: 100000,
+    active: true,
+  },
+  {
+    code: 'FREESHIP',
+    discountAmount: 30000,
+    desc: 'Miễn phí vận chuyển 30.000đ toàn quốc',
+    minOrderTotal: 0,
+    active: true,
+  },
+];
+
+export interface ProductReview {
+  id: string;
+  productId: string;
+  orderId?: string;
+  customerName: string;
+  customerPhone?: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 export interface OrderItem {
   productId: string;
   productName: string;
@@ -23,6 +67,7 @@ export interface Order {
   status: OrderStatus;
   createdAt: string;
   updatedAt?: string;
+  engravingNote?: string;
   notes?: string;
 }
 
