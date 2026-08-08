@@ -38,8 +38,9 @@ import {
   Truck,
   CheckCircle,
 } from 'lucide-react';
+import { Star, MessageSquare } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from '../types/auth';
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -57,6 +58,7 @@ interface AdminDashboardModalProps {
   headerConfig?: HeaderConfig;
   onSaveHeaderConfig?: (config: HeaderConfig) => void;
   orders?: Order[];
+  reviews?: ProductReview[];
   onUpdateOrderStatus?: (orderId: string, status: OrderStatus, notes?: string) => Promise<void> | void;
   onDeleteOrder?: (orderId: string) => Promise<void> | void;
   vouchers?: Voucher[];
@@ -80,13 +82,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   headerConfig,
   onSaveHeaderConfig,
   orders = [],
+  reviews = [],
   onUpdateOrderStatus,
   onDeleteOrder,
   vouchers = DEFAULT_VOUCHERS,
   onSaveVouchers,
   onResetStats,
 }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'orders' | 'vouchers' | 'header' | 'footer'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'orders' | 'reviews' | 'vouchers' | 'header' | 'footer'>('stats');
   const [productSubMode, setProductSubMode] = useState<'list' | 'form'>('list');
   const [searchFilter, setSearchFilter] = useState('');
   const [orderSearchFilter, setOrderSearchFilter] = useState('');
@@ -588,6 +591,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                 {newOrdersCount} mới
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`flex-1 py-3.5 flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer relative ${
+              activeTab === 'reviews'
+                ? 'border-amber-600 text-amber-800 bg-[#FDFBF7] font-bold'
+                : 'border-transparent text-[#6B665E] hover:text-[#2D2926]'
+            }`}
+          >
+            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+            <span>Đánh Giá Khách Hàng ({reviews.length})</span>
           </button>
 
           <button
@@ -1543,6 +1558,124 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                             </div>
                           </div>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'reviews' && (
+            <div className="space-y-6">
+              <div className="bg-white p-5 rounded-3xl border border-[#EAE7E2] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-serif-vi font-bold text-lg text-[#2D2926] flex items-center gap-2">
+                    <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                    <span>Quản Lý Đánh Giá & Phản Hồi Từ Khách Hàng</span>
+                  </h4>
+                  <p className="text-xs text-[#6B665E] mt-0.5">
+                    Toàn bộ đánh giá chất lượng sản phẩm & bình luận thực tế được khách hàng gửi về sau khi nhận đơn.
+                  </p>
+                </div>
+                <div className="bg-amber-50 px-5 py-2.5 rounded-2xl border border-amber-200 text-center shrink-0">
+                  <span className="text-2xl font-bold font-serif-vi text-[#8B4513]">
+                    {reviews.length > 0
+                      ? (reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / reviews.length).toFixed(1)
+                      : '5.0'}
+                    ⭐
+                  </span>
+                  <p className="text-[10px] text-amber-900 font-medium">Trung bình ({reviews.length} đánh giá)</p>
+                </div>
+              </div>
+
+              {reviews.length === 0 ? (
+                <div className="bg-white p-12 rounded-3xl border border-[#EAE7E2] text-center space-y-3">
+                  <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+                    ⭐
+                  </div>
+                  <h5 className="font-bold text-sm text-[#2D2926]">Chưa Có Đánh Giá Nào Từ Khách Hàng</h5>
+                  <p className="text-xs text-[#6B665E] max-w-sm mx-auto leading-relaxed">
+                    Khi khách hàng nhận được sản phẩm gỗ khắc laser và gửi nhận xét qua mục "Tra cứu đơn hàng", các đánh giá thực tế sẽ xuất hiện trực tiếp tại đây để Quản trị viên dễ dàng theo dõi.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {reviews.map((rev) => {
+                    const targetProduct = products.find((p) => p.id === rev.productId);
+                    const dateStr = rev.createdAt
+                      ? new Date(rev.createdAt).toLocaleString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'Gần đây';
+
+                    return (
+                      <div
+                        key={rev.id}
+                        className="bg-white p-5 rounded-3xl border border-[#EAE7E2] shadow-2xs space-y-3 hover:border-amber-300 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2 border-b border-[#EAE7E2] pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-full bg-[#8B4513] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                              {rev.customerName ? rev.customerName.charAt(0).toUpperCase() : 'K'}
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-xs text-[#2D2926]">
+                                {rev.customerName || 'Khách hàng'}
+                              </h5>
+                              <p className="text-[10px] text-[#8C877E]">
+                                {rev.customerPhone ? `SĐT: ${rev.customerPhone}` : 'Đã mua hàng'} • {dateStr}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-0.5 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3.5 h-3.5 ${
+                                  i < (rev.rating || 5)
+                                    ? 'text-amber-500 fill-amber-500'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {targetProduct && (
+                          <div className="flex items-center gap-3 bg-[#FDFBF7] p-2.5 rounded-2xl border border-[#EAE7E2]">
+                            <img
+                              src={targetProduct.imageUrl}
+                              alt={targetProduct.name}
+                              className="w-10 h-10 rounded-xl object-cover border border-[#DEDAD2] shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <span className="text-[10px] uppercase font-bold text-[#8B4513]">
+                                Sản phẩm đã mua:
+                              </span>
+                              <h6 className="font-bold text-xs text-[#2D2926] truncate">
+                                {targetProduct.name}
+                              </h6>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="bg-[#F8F6F2] p-3 rounded-2xl border border-[#EAE7E2] text-xs font-serif-vi text-[#2D2926] leading-relaxed italic">
+                          "{rev.comment}"
+                        </div>
+
+                        {rev.orderId && (
+                          <div className="flex items-center justify-between text-[10px] text-[#8C877E] pt-1">
+                            <span>Mã Đơn Hàng: <b className="font-mono text-[#2D2926]">#{rev.orderId}</b></span>
+                            <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              ✓ Đã mua và hoàn thành đơn
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
