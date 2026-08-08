@@ -1999,10 +1999,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   </div>
                 </div>
 
-                {/* 2. Ngưỡng Miễn Phí Giao Hàng */}
+                {/* 2. Ngưỡng Miễn Phí Giao Hàng & Tự Động Kích Hoạt Voucher */}
                 <div className="space-y-3 border-b border-[#EAE7E2] pb-6">
                   <h5 className="font-bold text-xs uppercase tracking-wider text-[#8B4513] flex items-center gap-1.5">
-                    <span>2. Ngưỡng Đơn Hàng Miễn Phí Vận Chuyển (Freeship)</span>
+                    <Truck className="w-4 h-4 text-[#8B4513]" />
+                    <span>2. Ngưỡng Tự Động Miễn Phí Vận Chuyển (Freeship Voucher)</span>
                   </h5>
                   <div>
                     <label className="block text-xs font-bold text-[#2D2926] mb-1">
@@ -2014,12 +2015,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         min="0"
                         step="50000"
                         value={shippingForm.freeShippingThreshold}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
                           setShippingForm({
                             ...shippingForm,
-                            freeShippingThreshold: Number(e.target.value) || 0,
-                          })
-                        }
+                            freeShippingThreshold: val,
+                            shippingNote: `Miễn phí giao hàng toàn quốc cho đơn từ ${val.toLocaleString('vi-VN')}đ`,
+                          });
+                        }}
                         className="w-full pl-4 pr-16 py-2.5 text-xs font-mono font-bold border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513] text-[#2D2926]"
                         required
                       />
@@ -2027,18 +2030,30 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                         VNĐ
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#8C877E] mt-1.5">
-                      Khi tổng tiền sản phẩm đạt hoặc vượt mức này, hệ thống sẽ tự động tính Phí Ship = 0đ.
-                    </p>
+                    <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-[11px] text-amber-900 mt-2 space-y-1">
+                      <p className="font-bold">⚡ Quy tắc tự động hóa khi áp dụng cho khách hàng:</p>
+                      <ul className="list-disc pl-4 space-y-0.5 text-[#6B665E]">
+                        <li>
+                          Đơn hàng <b>≥ {shippingForm.freeShippingThreshold.toLocaleString('vi-VN')}đ</b>: Hệ thống <b>tự động kích hoạt Voucher Miễn Phí Vận Chuyển</b> (Phí ship = 0đ).
+                        </li>
+                        <li>
+                          Đơn hàng <b>&lt; {shippingForm.freeShippingThreshold.toLocaleString('vi-VN')}đ</b>: <b>KHÔNG được áp dụng FREESHIP</b> và tính phí giao hàng mặc định ({shippingForm.defaultShippingFee.toLocaleString('vi-VN')}đ).
+                        </li>
+                      </ul>
+                    </div>
 
                     {/* Presets */}
                     <div className="flex items-center gap-2 mt-3 flex-wrap">
                       <span className="text-[10px] font-bold text-[#8C877E] uppercase">Gợi ý nhanh:</span>
-                      {[0, 500000, 800000, 1000000, 1500000, 2000000].map((thresh) => (
+                      {[0, 300000, 500000, 800000, 1000000, 1500000, 2000000].map((thresh) => (
                         <button
                           key={thresh}
                           type="button"
-                          onClick={() => setShippingForm({ ...shippingForm, freeShippingThreshold: thresh })}
+                          onClick={() => setShippingForm({
+                            ...shippingForm,
+                            freeShippingThreshold: thresh,
+                            shippingNote: thresh === 0 ? 'Miễn phí giao hàng toàn quốc cho mọi đơn' : `Miễn phí giao hàng toàn quốc cho đơn từ ${thresh.toLocaleString('vi-VN')}đ`,
+                          })}
                           className={`px-3 py-1 rounded-xl text-xs font-bold cursor-pointer transition-all ${
                             shippingForm.freeShippingThreshold === thresh
                               ? 'bg-[#8B4513] text-white shadow-xs'
