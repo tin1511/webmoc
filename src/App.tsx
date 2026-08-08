@@ -16,8 +16,9 @@ import { AuthModal } from './components/AuthModal';
 import { SecurityModal } from './components/SecurityModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
+import { OrderLookupModal } from './components/OrderLookupModal';
 import { PRODUCTS, Product } from './data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus } from './types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS } from './types/auth';
 import { Filter, Sparkles, Plus, RefreshCw, CheckCircle2 } from 'lucide-react';
 import {
   subscribeToProducts,
@@ -32,6 +33,9 @@ import {
   subscribeToOrders,
   updateOrderStatusInFirestore,
   deleteOrderFromFirestore,
+  subscribeToVouchers,
+  saveVouchersToFirestore,
+  clearAllOrdersFromFirestore,
 } from './lib/firestoreService';
 
 export default function App() {
@@ -46,11 +50,25 @@ export default function App() {
   // Orders state synced with Firestore cloud database
   const [orders, setOrders] = useState<Order[]>([]);
 
+  // Vouchers state synced with Firestore cloud database
+  const [vouchers, setVouchers] = useState<Voucher[]>(DEFAULT_VOUCHERS);
+
+  // Order Lookup Modal State
+  const [isOrderLookupOpen, setIsOrderLookupOpen] = useState(false);
+
   // Subscribe to real-time Firestore products collection
   useEffect(() => {
     const unsubscribe = subscribeToProducts((updatedProducts) => {
       setProducts(updatedProducts);
       setIsProductsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Subscribe to real-time Firestore vouchers
+  useEffect(() => {
+    const unsubscribe = subscribeToVouchers((updatedVouchers) => {
+      setVouchers(updatedVouchers);
     });
     return () => unsubscribe();
   }, []);
@@ -78,6 +96,17 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  const handleSaveVouchers = async (newVouchers: Voucher[]) => {
+    setVouchers(newVouchers);
+    await saveVouchersToFirestore(newVouchers);
+    showToast('✨ Danh sách Voucher đã được cập nhật thành công!');
+  };
+
+  const handleResetStats = async () => {
+    await clearAllOrdersFromFirestore(orders);
+    showToast('✨ Tất cả số liệu thống kê & đơn hàng đã được reset về 0!');
+  };
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus, notes?: string) => {
     await updateOrderStatusInFirestore(orderId, status, notes);
@@ -352,6 +381,7 @@ export default function App() {
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthOpen(true)}
         onOpenAdminDashboard={handleOpenAdmin}
+        onOpenOrderLookup={() => setIsOrderLookupOpen(true)}
         onOpenSecurity={() => setIsSecurityOpen(true)}
         onLogout={handleLogout}
         headerConfig={headerConfig}
@@ -521,6 +551,7 @@ export default function App() {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
+        vouchers={vouchers}
         onPlaceOrder={() => {
           showToast('🎉 Đơn hàng đã được khởi tạo và gửi tới Quản Trị Viên!');
         }}
@@ -559,6 +590,16 @@ export default function App() {
         orders={orders}
         onUpdateOrderStatus={handleUpdateOrderStatus}
         onDeleteOrder={handleDeleteOrder}
+        vouchers={vouchers}
+        onSaveVouchers={handleSaveVouchers}
+        onResetStats={handleResetStats}
+      />
+
+      <OrderLookupModal
+        isOpen={isOrderLookupOpen}
+        onClose={() => setIsOrderLookupOpen(false)}
+        orders={orders}
+        products={products}
       />
 
 
