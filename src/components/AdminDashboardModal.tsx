@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { Star, MessageSquare } from 'lucide-react';
 import { Product, REGIONS_INFO, CATEGORIES_INFO } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, ShippingConfig, DEFAULT_SHIPPING_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from '../types/auth';
 
 interface AdminDashboardModalProps {
   isOpen: boolean;
@@ -57,6 +57,8 @@ interface AdminDashboardModalProps {
   onSaveFooterConfig?: (config: FooterConfig) => void;
   headerConfig?: HeaderConfig;
   onSaveHeaderConfig?: (config: HeaderConfig) => void;
+  shippingConfig?: ShippingConfig;
+  onSaveShippingConfig?: (config: ShippingConfig) => void;
   orders?: Order[];
   reviews?: ProductReview[];
   onUpdateOrderStatus?: (orderId: string, status: OrderStatus, notes?: string) => Promise<void> | void;
@@ -81,6 +83,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onSaveFooterConfig,
   headerConfig,
   onSaveHeaderConfig,
+  shippingConfig,
+  onSaveShippingConfig,
   orders = [],
   reviews = [],
   onUpdateOrderStatus,
@@ -89,7 +93,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onSaveVouchers,
   onResetStats,
 }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'orders' | 'reviews' | 'vouchers' | 'header' | 'footer'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'products' | 'orders' | 'reviews' | 'vouchers' | 'header' | 'footer' | 'shipping'>('stats');
   const [productSubMode, setProductSubMode] = useState<'list' | 'form'>('list');
   const [searchFilter, setSearchFilter] = useState('');
   const [orderSearchFilter, setOrderSearchFilter] = useState('');
@@ -130,6 +134,17 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
       setFooterForm({ ...DEFAULT_FOOTER_CONFIG, ...footerConfig });
     }
   }, [footerConfig]);
+
+  const [shippingForm, setShippingForm] = useState<ShippingConfig>(() => ({
+    ...DEFAULT_SHIPPING_CONFIG,
+    ...shippingConfig,
+  }));
+
+  React.useEffect(() => {
+    if (shippingConfig) {
+      setShippingForm({ ...DEFAULT_SHIPPING_CONFIG, ...shippingConfig });
+    }
+  }, [shippingConfig]);
 
 
   // Editing product state (if null, creating new)
@@ -615,6 +630,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
           >
             <Ticket className="w-4 h-4 text-[#8B4513]" />
             <span>Voucher ({vouchersList.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('shipping')}
+            className={`flex-1 py-3.5 flex items-center justify-center gap-2 border-b-2 transition-colors cursor-pointer ${
+              activeTab === 'shipping'
+                ? 'border-[#8B4513] text-[#8B4513] bg-[#FDFBF7] font-bold'
+                : 'border-transparent text-[#6B665E] hover:text-[#2D2926]'
+            }`}
+          >
+            <Truck className="w-4 h-4 text-[#8B4513]" />
+            <span>Phí Vận Chuyển</span>
           </button>
 
           <button
@@ -1878,6 +1905,206 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'shipping' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between bg-[#FDFBF7] p-4.5 rounded-2xl border border-amber-200 shadow-2xs">
+                <div>
+                  <h4 className="font-serif-vi font-bold text-base text-[#2D2926] flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-[#8B4513]" />
+                    Cấu Hình Phí Vận Chuyển & Chính Sách Giao Hàng
+                  </h4>
+                  <p className="text-xs text-[#6B665E] mt-0.5">
+                    Thay đổi phí giao hàng mặc định và giá trị đơn hàng tối thiểu để được miễn phí giao hàng (Free Shipping) trên toàn hệ thống.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#8B4513] bg-[#8B4513]/10 px-3 py-1 rounded-full flex items-center gap-1.5 shrink-0">
+                  <ShieldCheck className="w-4 h-4" /> Đồng bộ Cloud
+                </span>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (onSaveShippingConfig) {
+                    onSaveShippingConfig(shippingForm);
+                  }
+                  setStatusMessage({
+                    text: 'Đã lưu và cập nhật chính sách Phí Vận Chuyển lên Cloud thành công!',
+                    type: 'success',
+                  });
+                }}
+                className="space-y-6 bg-white p-6 rounded-3xl border border-[#EAE7E2] shadow-2xs"
+              >
+                {/* 1. Phí Giao Hàng Mặc Định */}
+                <div className="space-y-3 border-b border-[#EAE7E2] pb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#8B4513] flex items-center gap-1.5">
+                    <span>1. Phí Giao Hàng Tiêu Chuẩn (Toàn Quốc)</span>
+                  </h5>
+                  <div>
+                    <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                      Số tiền phí vận chuyển (VNĐ)
+                    </label>
+                    <div className="relative max-w-md">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={shippingForm.defaultShippingFee}
+                        onChange={(e) =>
+                          setShippingForm({
+                            ...shippingForm,
+                            defaultShippingFee: Number(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full pl-4 pr-16 py-2.5 text-xs font-mono font-bold border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513] text-[#2D2926]"
+                        required
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[#8C877E]">
+                        VNĐ
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#8C877E] mt-1.5">
+                      Áp dụng cho tất cả các đơn hàng chưa đủ điều kiện miễn phí vận chuyển.
+                    </p>
+
+                    {/* Presets */}
+                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                      <span className="text-[10px] font-bold text-[#8C877E] uppercase">Gợi ý nhanh:</span>
+                      {[0, 20000, 30000, 35000, 40000, 50000].map((fee) => (
+                        <button
+                          key={fee}
+                          type="button"
+                          onClick={() => setShippingForm({ ...shippingForm, defaultShippingFee: fee })}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                            shippingForm.defaultShippingFee === fee
+                              ? 'bg-[#8B4513] text-white shadow-xs'
+                              : 'bg-[#F8F6F2] hover:bg-[#EAE7E2] text-[#2D2926] border border-[#DEDAD2]'
+                          }`}
+                        >
+                          {fee === 0 ? '0đ (Free)' : `${fee.toLocaleString('vi-VN')}đ`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Ngưỡng Miễn Phí Giao Hàng */}
+                <div className="space-y-3 border-b border-[#EAE7E2] pb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#8B4513] flex items-center gap-1.5">
+                    <span>2. Ngưỡng Đơn Hàng Miễn Phí Vận Chuyển (Freeship)</span>
+                  </h5>
+                  <div>
+                    <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                      Giá trị đơn hàng tối thiểu để được FREESHIP (VNĐ)
+                    </label>
+                    <div className="relative max-w-md">
+                      <input
+                        type="number"
+                        min="0"
+                        step="50000"
+                        value={shippingForm.freeShippingThreshold}
+                        onChange={(e) =>
+                          setShippingForm({
+                            ...shippingForm,
+                            freeShippingThreshold: Number(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full pl-4 pr-16 py-2.5 text-xs font-mono font-bold border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513] text-[#2D2926]"
+                        required
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[#8C877E]">
+                        VNĐ
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#8C877E] mt-1.5">
+                      Khi tổng tiền sản phẩm đạt hoặc vượt mức này, hệ thống sẽ tự động tính Phí Ship = 0đ.
+                    </p>
+
+                    {/* Presets */}
+                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                      <span className="text-[10px] font-bold text-[#8C877E] uppercase">Gợi ý nhanh:</span>
+                      {[0, 500000, 800000, 1000000, 1500000, 2000000].map((thresh) => (
+                        <button
+                          key={thresh}
+                          type="button"
+                          onClick={() => setShippingForm({ ...shippingForm, freeShippingThreshold: thresh })}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                            shippingForm.freeShippingThreshold === thresh
+                              ? 'bg-[#8B4513] text-white shadow-xs'
+                              : 'bg-[#F8F6F2] hover:bg-[#EAE7E2] text-[#2D2926] border border-[#DEDAD2]'
+                          }`}
+                        >
+                          {thresh === 0 ? '0đ (Luôn freeship)' : `${thresh.toLocaleString('vi-VN')}đ`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Ghi Chú / Thông Báo Vận Chuyển */}
+                <div className="space-y-3 border-b border-[#EAE7E2] pb-6">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#8B4513]">
+                    3. Ghi Chú Vận Chuyển Hướng Dẫn Khách Hàng
+                  </h5>
+                  <div>
+                    <label className="block text-xs font-bold text-[#2D2926] mb-1">
+                      Nội dung thông báo vận chuyển ngắn gọn
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingForm.shippingNote || ''}
+                      onChange={(e) => setShippingForm({ ...shippingForm, shippingNote: e.target.value })}
+                      placeholder="VD: Miễn phí giao hàng toàn quốc cho đơn từ 1.000.000đ"
+                      className="w-full px-4 py-2.5 text-xs border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
+                    />
+                  </div>
+                </div>
+
+                {/* Dynamic Preview Box */}
+                <div className="bg-[#F8F6F2] p-4.5 rounded-2xl border border-[#DEDAD2] space-y-2">
+                  <h6 className="font-bold text-xs text-[#2D2926] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>💡 XEM TRƯỚC BẢNG TÍNH GIỎ HÀNG:</span>
+                  </h6>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="bg-white p-3 rounded-xl border border-[#EAE7E2] space-y-1">
+                      <span className="text-[10px] text-[#8C877E] uppercase font-bold">Đơn hàng 500.000đ</span>
+                      <div className="flex justify-between font-bold">
+                        <span>Phí giao hàng:</span>
+                        <span className={500000 >= shippingForm.freeShippingThreshold ? 'text-emerald-700' : 'text-[#8B4513]'}>
+                          {500000 >= shippingForm.freeShippingThreshold
+                            ? '0đ (Miễn phí)'
+                            : `${shippingForm.defaultShippingFee.toLocaleString('vi-VN')}đ`}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-[#EAE7E2] space-y-1">
+                      <span className="text-[10px] text-[#8C877E] uppercase font-bold">Đơn hàng 1.200.000đ</span>
+                      <div className="flex justify-between font-bold">
+                        <span>Phí giao hàng:</span>
+                        <span className={1200000 >= shippingForm.freeShippingThreshold ? 'text-emerald-700' : 'text-[#8B4513]'}>
+                          {1200000 >= shippingForm.freeShippingThreshold
+                            ? '0đ (Miễn phí)'
+                            : `${shippingForm.defaultShippingFee.toLocaleString('vi-VN')}đ`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="submit"
+                    className="bg-[#8B4513] hover:bg-[#6E360F] text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-md transition-all cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Lưu Cấu Hình Phí Vận Chuyển (Cloud)</span>
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
