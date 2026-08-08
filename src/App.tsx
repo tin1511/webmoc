@@ -166,6 +166,8 @@ export default function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState<'login' | 'register'>('login');
+  const [pendingBuyNowItem, setPendingBuyNowItem] = useState<{ product: Product; quantity: number } | null>(null);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -246,6 +248,13 @@ export default function App() {
     setCurrentUser(user);
     localStorage.setItem('bansacviet_current_user', JSON.stringify(user));
     showToast(`🎉 Đăng nhập thành công! Chào mừng ${user.name}.`);
+
+    if (pendingBuyNowItem) {
+      handleAddToCart(pendingBuyNowItem.product, pendingBuyNowItem.quantity);
+      setSelectedProduct(null);
+      setIsCartOpen(true);
+      setPendingBuyNowItem(null);
+    }
   };
 
   const handleLogout = () => {
@@ -333,6 +342,13 @@ export default function App() {
   };
 
   const handleBuyNow = (product: Product, quantity: number = 1) => {
+    if (!currentUser) {
+      showToast('🔑 Vui lòng đăng ký / đăng nhập tài khoản để tiếp tục Mua Ngay!');
+      setPendingBuyNowItem({ product, quantity });
+      setAuthInitialTab('register');
+      setIsAuthOpen(true);
+      return;
+    }
     handleAddToCart(product, quantity);
     setSelectedProduct(null);
     setIsCartOpen(true);
@@ -586,6 +602,11 @@ export default function App() {
         onPlaceOrder={() => {
           showToast('🎉 Đơn hàng đã được khởi tạo và gửi tới Quản Trị Viên!');
         }}
+        onOpenAuth={() => {
+          showToast('🔑 Vui lòng đăng ký / đăng nhập để tiến hành thanh toán đơn hàng!');
+          setAuthInitialTab('register');
+          setIsAuthOpen(true);
+        }}
       />
 
       <WishlistModal
@@ -601,6 +622,7 @@ export default function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+        initialTab={authInitialTab}
       />
 
       <AdminDashboardModal
