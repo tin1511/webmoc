@@ -61,7 +61,7 @@ export const CartModal: React.FC<CartModalProps> = ({
     0
   );
 
-  const activeVouchers = (vouchers && vouchers.length > 0 ? vouchers : DEFAULT_VOUCHERS).filter(v => v.active);
+  const activeVouchers = (vouchers ?? DEFAULT_VOUCHERS).filter(v => v.active);
 
   let discount = 0;
   const currentVoucher = activeVouchers.find((v) => v.code.toUpperCase() === appliedPromo?.toUpperCase());
