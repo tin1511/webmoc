@@ -55,6 +55,9 @@ export type OrderStatus = 'Mới tiếp nhận' | 'Đang xử lý' | 'Đang giao
 
 export interface Order {
   id: string;
+  userId?: string;
+  username?: string;
+  userEmail?: string;
   customerName: string;
   customerPhone: string;
   customerAddress: string;
