@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Search, PackageCheck, Truck, Clock, CheckCircle2, Star, MessageSquare, Phone, User, MapPin } from 'lucide-react';
-import { Order, OrderStatus, ProductReview } from '../types/auth';
+import { X, Search, PackageCheck, Truck, Clock, CheckCircle2, Star, MessageSquare, Phone, User, MapPin, ShieldCheck, Lock } from 'lucide-react';
+import { Order, OrderStatus, ProductReview, UserAccount } from '../types/auth';
 import { Product } from '../data/products';
 import { updateOrderStatusInFirestore, addProductReviewToFirestore } from '../lib/firestoreService';
 
@@ -9,6 +9,7 @@ interface OrderLookupModalProps {
   onClose: () => void;
   orders: Order[];
   products: Product[];
+  currentUser?: UserAccount | null;
   onShowToast?: (msg: string) => void;
 }
 
@@ -17,6 +18,7 @@ export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
   onClose,
   orders = [],
   products = [],
+  currentUser,
   onShowToast,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,7 +39,26 @@ export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
     setHasSearched(true);
   };
 
-  const filteredOrders = orders.filter((o) => {
+  // Find orders belonging to logged in currentUser
+  const currentUserOrders = orders.filter((o) => {
+    if (!currentUser) return false;
+    const cName = (o.customerName || '').toLowerCase();
+    const cPhone = (o.customerPhone || '').toLowerCase();
+    const uName = (currentUser.username || '').toLowerCase();
+    const uFullName = (currentUser.name || '').toLowerCase();
+    const uEmail = (currentUser.email || '').toLowerCase();
+
+    return (
+      (o.username && o.username === currentUser.username) ||
+      (o.userId && o.userId === currentUser.username) ||
+      (o.userEmail && o.userEmail === currentUser.email) ||
+      (uEmail && o.userEmail === uEmail) ||
+      (uFullName && cName.includes(uFullName)) ||
+      (uName && (cName.includes(uName) || cPhone.includes(uName)))
+    );
+  });
+
+  const searchedOrders = orders.filter((o) => {
     if (!searchQuery.trim()) return false;
     const q = searchQuery.toLowerCase().trim();
     return (
@@ -46,6 +67,18 @@ export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
       (o.customerName || '').toLowerCase().includes(q)
     );
   });
+
+  // Display orders:
+  // If user typed search query: show searchedOrders
+  // If logged in & no search query: show currentUserOrders automatically
+  // Otherwise: show search results or empty state
+  const displayOrders = searchQuery.trim()
+    ? searchedOrders
+    : currentUser
+    ? currentUserOrders
+    : hasSearched
+    ? searchedOrders
+    : [];
 
   const handleConfirmReceivedAndReview = (order: Order, productId?: string) => {
     setReviewOrder(order);
@@ -127,6 +160,40 @@ export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
           </button>
         </div>
 
+        {/* Logged in User Security Banner or Info */}
+        <div className="px-5 pt-4">
+          {currentUser ? (
+            <div className="bg-emerald-50 border border-emerald-200/80 p-3.5 rounded-2xl flex items-start gap-3 text-emerald-950 shadow-2xs">
+              <div className="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                🔒
+              </div>
+              <div className="space-y-0.5 text-xs flex-1">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <p className="font-bold text-sm text-emerald-950 flex items-center gap-1.5">
+                    <span>{currentUser.name}</span>
+                    <span className="text-[10px] bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-full font-mono font-bold">
+                      @{currentUser.username}
+                    </span>
+                  </p>
+                  <span className="bg-emerald-700 text-white font-bold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Đã Đồng Bộ Tự Động
+                  </span>
+                </div>
+                <p className="text-emerald-800 text-[11px] leading-relaxed">
+                  Tài khoản của bạn đã được nhận diện an toàn. Tất cả <b>{currentUserOrders.length} đơn hàng</b> được tự động bảo mật & hiển thị bên dưới mà không cần gõ số điện thoại!
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-2xl text-xs text-amber-900 flex items-center gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+              <span className="text-[11px]">
+                💡 <b>Bảo mật thông tin:</b> Vui lòng nhập Số điện thoại hoặc Mã đơn hàng bên dưới để kiểm tra tiến trình giao vận.
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Search Input Bar */}
         <div className="p-5 border-b border-[#EAE7E2] bg-white">
           <form onSubmit={handleSearch} className="flex gap-2">
@@ -134,8 +201,7 @@ export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
               <Search className="w-4 h-4 text-[#8C877E] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                required
-                placeholder="Nhập số điện thoại (VD: 0901xxx) hoặc mã đơn hàng..."
+                placeholder={currentUser ? "Tìm nhanh mã đơn hàng hoặc tên..." : "Nhập số điện thoại (VD: 0901xxx) hoặc mã đơn hàng..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 text-xs bg-[#F8F6F2] border border-[#DEDAD2] rounded-2xl focus:outline-none focus:border-[#8B4513]"
@@ -145,39 +211,47 @@ export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
               type="submit"
               className="bg-[#8B4513] hover:bg-[#6E360F] text-white px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs"
             >
-              Tra Cứu
+              Lọc Đơn
             </button>
           </form>
         </div>
 
         {/* Content Area */}
         <div className="p-5 overflow-y-auto flex-1 space-y-4">
-          {!hasSearched ? (
+          {displayOrders.length === 0 ? (
             <div className="text-center py-10 space-y-3">
               <div className="w-16 h-16 bg-[#F0EDE9] rounded-full flex items-center justify-center mx-auto text-3xl">
-                📦
+                {currentUser ? '📦' : '🔍'}
               </div>
+              <h4 className="font-bold text-sm text-[#2D2926]">
+                {currentUser
+                  ? 'Chưa Có Đơn Hàng Nào Đã Đặt'
+                  : searchQuery.trim()
+                  ? 'Không Tìm Thấy Đơn Hàng'
+                  : 'Chưa Nhập Thông Tin Tra Cứu'}
+              </h4>
               <p className="text-xs text-[#6B665E] max-w-sm mx-auto">
-                Nhập số điện thoại mà bạn đã dùng khi đặt hàng để kiểm tra quá trình giao vận và đánh giá chất lượng quà tặng sau khi nhận hàng.
-              </p>
-            </div>
-          ) : filteredOrders.length === 0 ? (
-            <div className="text-center py-10 space-y-2">
-              <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
-                🔍
-              </div>
-              <h4 className="font-bold text-sm text-[#2D2926]">Không Tìm Thấy Đơn Hàng</h4>
-              <p className="text-xs text-[#6B665E]">
-                Không có đơn hàng nào khớp với từ khóa "<b>{searchQuery}</b>". Vui lòng kiểm tra lại số điện thoại!
+                {currentUser
+                  ? 'Tài khoản của bạn hiện chưa có lịch sử đơn hàng. Hãy chọn cho mình một món quà gỗ khắc laser độc bản ngay!'
+                  : searchQuery.trim()
+                  ? `Không tìm thấy đơn hàng nào khớp với từ khóa "${searchQuery}". Vui lòng kiểm tra lại số điện thoại hoặc mã đơn!`
+                  : 'Nhập số điện thoại mà bạn đã dùng khi đặt hàng để kiểm tra quá trình giao vận và viết đánh giá sau khi nhận hàng.'}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-xs text-[#6B665E] font-bold">
-                Tìm thấy {filteredOrders.length} đơn hàng liên quan:
-              </p>
+              <div className="flex items-center justify-between text-xs text-[#6B665E] font-bold border-b border-[#EAE7E2] pb-2">
+                <span>
+                  {currentUser && !searchQuery.trim()
+                    ? `Danh Sách Đơn Hàng Của ${currentUser.name} (${displayOrders.length})`
+                    : `Tìm thấy ${displayOrders.length} đơn hàng liên quan:`}
+                </span>
+                <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-normal">
+                  🟢 Tự động đồng bộ thời gian thực
+                </span>
+              </div>
 
-              {filteredOrders.map((order) => {
+              {displayOrders.map((order) => {
                 const dateStr = order.createdAt
                   ? new Date(order.createdAt).toLocaleString('vi-VN', {
                       day: '2-digit',
@@ -226,6 +300,89 @@ export const OrderLookupModal: React.FC<OrderLookupModalProps> = ({
                         {order.status === 'Đã hủy' && '🔴 Đã Hủy'}
                       </span>
                     </div>
+
+                    {/* 4-STEP VISUAL PROGRESS TIMELINE */}
+                    {order.status !== 'Đã hủy' && (
+                      <div className="bg-[#FDFBF7] p-3.5 rounded-2xl border border-[#EAE7E2] my-2 space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-[#6B665E] px-1">
+                          <span className={order.status === 'Mới tiếp nhận' ? 'text-[#8B4513]' : 'text-[#2D2926]'}>
+                            1. tiếp nhận
+                          </span>
+                          <span className={order.status === 'Đang xử lý' ? 'text-blue-700' : 'text-[#2D2926]'}>
+                            2. Chế tác
+                          </span>
+                          <span className={order.status === 'Đang giao hàng' ? 'text-purple-700' : 'text-[#2D2926]'}>
+                            3. Đang giao
+                          </span>
+                          <span className={order.status === 'Đã hoàn thành' ? 'text-green-700' : 'text-[#2D2926]'}>
+                            4. Hoàn thành
+                          </span>
+                        </div>
+
+                        {/* Progress Line */}
+                        <div className="relative w-full h-2.5 bg-[#EAE7E2] rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-500 rounded-full ${
+                              order.status === 'Mới tiếp nhận'
+                                ? 'w-1/4 bg-amber-500'
+                                : order.status === 'Đang xử lý'
+                                ? 'w-2/4 bg-blue-600'
+                                : order.status === 'Đang giao hàng'
+                                ? 'w-3/4 bg-purple-600'
+                                : 'w-full bg-green-600'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SPECIAL STATUS NOTICE BANNERS */}
+                    {order.status === 'Đang giao hàng' && (
+                      <div className="p-3.5 bg-purple-50 rounded-2xl border-2 border-purple-200 text-xs space-y-2">
+                        <div className="flex items-start gap-2 text-purple-900 font-bold">
+                          <span className="text-base">🚚</span>
+                          <div>
+                            <p className="font-bold text-sm">Đơn hàng đang được giao tới bạn!</p>
+                            <p className="font-normal text-[11px] text-purple-800 mt-0.5">
+                              Quản trị viên đã bàn giao sản phẩm khắc thủ công cho đối tác vận chuyển. Shipper đang trên đường phát hàng tới địa chỉ của bạn ({order.customerAddress}). Vui lòng giữ liên lạc qua điện thoại!
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmReceivedAndReview(order)}
+                            className="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Xác Nhận Đã Nhận Hàng & Viết Đánh Giá</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {order.status === 'Đã hoàn thành' && (
+                      <div className="p-3.5 bg-green-50 rounded-2xl border-2 border-green-200 text-xs space-y-2">
+                        <div className="flex items-start gap-2 text-green-900 font-bold">
+                          <span className="text-base">🎉</span>
+                          <div>
+                            <p className="font-bold text-sm">Đơn hàng đã hoàn thành thành công!</p>
+                            <p className="font-normal text-[11px] text-green-800 mt-0.5">
+                              Cảm ơn bạn đã tin tưởng và chọn lựa quà tặng gỗ khắc thủ công Bản Sắc Việt. Hãy chia sẻ trải nghiệm bằng cách bấm nút "Đánh giá sản phẩm" bên dưới!
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {order.status === 'Đang xử lý' && (
+                      <div className="p-3 bg-blue-50 rounded-2xl border border-blue-200 text-xs text-blue-900 flex items-center gap-2">
+                        <span className="text-base">🎨</span>
+                        <span>
+                          <b>Nghệ nhân đang khắc laser & chế tác:</b> Đơn hàng của bạn đang được xưởng xẻ khắc thủ công tỉ mỉ theo yêu cầu.
+                        </span>
+                      </div>
+                    )}
 
                     {/* Order Items */}
                     <div className="space-y-2">
