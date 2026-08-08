@@ -445,6 +445,27 @@ export async function saveVouchersToFirestore(vouchers: Voucher[]): Promise<void
 }
 
 /**
+ * Real-time listener for Product Reviews in Firestore
+ */
+export function subscribeToReviews(
+  onReviewsUpdate: (reviews: ProductReview[]) => void
+) {
+  const REVIEWS_COLLECTION = 'product_reviews';
+  const colRef = collection(db, REVIEWS_COLLECTION);
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const reviewList: ProductReview[] = snapshot.docs.map((d) => d.data() as ProductReview);
+      reviewList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      onReviewsUpdate(reviewList);
+    },
+    (err) => {
+      console.error('Firestore reviews listener error:', err);
+    }
+  );
+}
+
+/**
  * Submit a product review and update average rating in Firestore
  */
 export async function addProductReviewToFirestore(
