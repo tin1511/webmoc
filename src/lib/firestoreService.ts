@@ -11,7 +11,7 @@ import {
 from 'firebase/firestore';
 import { db } from './firebase';
 import { Product, PRODUCTS } from '../data/products';
-import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus } from '../types/auth';
+import { UserAccount, FooterConfig, DEFAULT_FOOTER_CONFIG, HeaderConfig, DEFAULT_HEADER_CONFIG, Order, OrderStatus, Voucher, DEFAULT_VOUCHERS, ProductReview } from '../types/auth';
 
 const PRODUCTS_COLLECTION = 'products';
 const USERS_COLLECTION = 'users';
@@ -396,5 +396,75 @@ export async function updateOrderStatusInFirestore(
  */
 export async function deleteOrderFromFirestore(orderId: string): Promise<void> {
   await deleteDoc(doc(db, ORDERS_COLLECTION, orderId));
+}
+
+/**
+ * Clear/Reset all Orders in Firestore (Reset statistics to 0)
+ */
+export async function clearAllOrdersFromFirestore(orders: Order[]): Promise<void> {
+  for (const o of orders) {
+    if (o.id) {
+      await deleteDoc(doc(db, ORDERS_COLLECTION, o.id));
+    }
+  }
+}
+
+/**
+ * Real-time listener for Vouchers in Firestore
+ */
+export function subscribeToVouchers(
+  onVouchersUpdate: (vouchers: Voucher[]) => void,
+  defaultVouchers: Voucher[] = DEFAULT_VOUCHERS
+) {
+  const docRef = doc(db, SETTINGS_COLLECTION, 'vouchers');
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data && Array.isArray(data.items)) {
+          onVouchersUpdate(data.items);
+          return;
+        }
+      }
+      onVouchersUpdate(defaultVouchers);
+    },
+    (err) => {
+      console.error('Firestore vouchers listener error:', err);
+      onVouchersUpdate(defaultVouchers);
+    }
+  );
+}
+
+/**
+ * Save Vouchers to Firestore
+ */
+export async function saveVouchersToFirestore(vouchers: Voucher[]): Promise<void> {
+  const cleanData = cleanForFirestore({ items: vouchers, updatedAt: new Date().toISOString() });
+  await setDoc(doc(db, SETTINGS_COLLECTION, 'vouchers'), cleanData, { merge: true });
+}
+
+/**
+ * Submit a product review and update average rating in Firestore
+ */
+export async function addProductReviewToFirestore(
+  review: ProductReview,
+  currentProduct?: Product
+): Promise<void> {
+  const REVIEWS_COLLECTION = 'product_reviews';
+  const cleanReview = cleanForFirestore(review);
+  await setDoc(doc(db, REVIEWS_COLLECTION, review.id), cleanReview);
+
+  if (currentProduct) {
+    const oldRating = currentProduct.rating || 5.0;
+    const oldReviewsCount = currentProduct.reviewsCount || 10;
+    const newReviewsCount = oldReviewsCount + 1;
+    const newRating = Number(((oldRating * oldReviewsCount + review.rating) / newReviewsCount).toFixed(1));
+
+    await updateDoc(doc(db, PRODUCTS_COLLECTION, currentProduct.id), {
+      rating: newRating,
+      reviewsCount: newReviewsCount,
+    });
+  }
 }
 
